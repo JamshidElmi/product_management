@@ -1,6 +1,5 @@
 <?php
-session_start(); // Start the session
-require_once 'config.php';
+require_once 'config.php'; // This will handle session configuration
 
 // DEBUG: Log session start and current state
 error_log("[LOGIN DEBUG] Session started. Session ID: " . session_id() . ", isLoggedIn: " . (isLoggedIn() ? 'true' : 'false'));

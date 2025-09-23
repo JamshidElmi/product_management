@@ -1,52 +1,17 @@
 <?php
-define('DB_HOST', 'localhost');
-define('DB_USER', 'u5thlbnw7t4i_manaGer_useR_produCt');
-define('DB_PASS', '1&H^2xpWyqCAJvm$');
-define('DB_NAME', 'u5thlbnw7t4i_product_manager');
-
-// reCAPTCHA Configuration
-// You need to get these from https://www.google.com/recaptcha/admin
-define('RECAPTCHA_SITE_KEY', '6LfSuNIrAAAAAL_yqGHflka0opcbMSTwJWxV6dFg'); // hosted
-// define('RECAPTCHA_SITE_KEY', '6LfyqM4rAAAAAERxDaKvmNLKaVECtfCUzZArsAUJ'); // local
-define('RECAPTCHA_SECRET_KEY', '6LfSuNIrAAAAAHRxpHKoOsSstPqAdOvyqQjLNzef'); // hosted
-// define('RECAPTCHA_SECRET_KEY', '6LfyqM4rAAAAAK5YYXcsi9nyob6pfTbYHZV6nxIH'); // local
-
-// Security Configuration
-define('MAX_LOGIN_ATTEMPTS', 5);
-define('LOCKOUT_TIME', 900); // 15 minutes in seconds
-define('SESSION_TIMEOUT', 3600); // 1 hour in seconds
-define('ENABLE_IP_VALIDATION', true);
-define('ENABLE_CSRF_PROTECTION', true);
-
-// TEMP: enable verbose error reporting for debugging — remove after troubleshooting
-ini_set('display_errors', '1');
-ini_set('display_startup_errors', '1');
-error_reporting(E_ALL);
-ini_set('log_errors', '1');
-// Write log into a file inside the project (create writable logs/ directory)
-ini_set('error_log', __DIR__ . '/logs/php-error.log');
-
-// Create database connection
-$conn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
-
-// Check connection
-if ($conn->connect_error) {
-    error_log("DB connect failed: " . $conn->connect_error);
-    die("Connection failed.");
-}
-
-// Enhanced session configuration
+// ===== SESSION CONFIGURATION FIRST =====
+// This MUST be set before any other code that might start a session
 if (session_status() === PHP_SESSION_NONE) {
     // Secure session settings for HTTPS hosting
     ini_set('session.cookie_httponly', 1);
     ini_set('session.cookie_secure', 1); // Enable for HTTPS
     ini_set('session.use_strict_mode', 1);
-    ini_set('session.cookie_samesite', 'Lax'); // Changed from Strict for better compatibility
-    ini_set('session.cookie_lifetime', 0); // Session cookies (expire when browser closes)
-    ini_set('session.cookie_path', '/'); // Available for entire domain
-    ini_set('session.cookie_domain', 'yfsuite.lubricityinnovations.com'); // Set proper domain without leading dot
+    ini_set('session.cookie_samesite', 'Lax');
+    ini_set('session.cookie_lifetime', 0);
+    ini_set('session.cookie_path', '/');
+    ini_set('session.cookie_domain', 'yfsuite.lubricityinnovations.com');
     
-    // Set session name to avoid conflicts
+    // Set consistent session name across ALL pages
     session_name('PRODUCT_MGMT_SESSION');
     
     session_start();
@@ -58,11 +23,44 @@ if (session_status() === PHP_SESSION_NONE) {
     if (!isset($_SESSION['last_regeneration'])) {
         $_SESSION['last_regeneration'] = time();
         error_log("[SESSION DEBUG] Set initial last_regeneration: " . $_SESSION['last_regeneration']);
-    } elseif (time() - $_SESSION['last_regeneration'] > 1800) { // Every 30 minutes instead of 5
+    } elseif (time() - $_SESSION['last_regeneration'] > 1800) { // Every 30 minutes
         error_log("[SESSION DEBUG] Regenerating session ID (30 min passed)");
         session_regenerate_id(true);
         $_SESSION['last_regeneration'] = time();
     }
+}
+
+// ===== DATABASE AND APP CONFIGURATION =====
+define('DB_HOST', 'localhost');
+define('DB_USER', 'u5thlbnw7t4i_manaGer_useR_produCt');
+define('DB_PASS', '1&H^2xpWyqCAJvm$');
+define('DB_NAME', 'u5thlbnw7t4i_product_manager');
+
+// reCAPTCHA Configuration
+define('RECAPTCHA_SITE_KEY', '6LfSuNIrAAAAAL_yqGHflka0opcbMSTwJWxV6dFg');
+define('RECAPTCHA_SECRET_KEY', '6LfSuNIrAAAAAHRxpHKoOsSstPqAdOvyqQjLNzef');
+
+// Security Configuration
+define('MAX_LOGIN_ATTEMPTS', 5);
+define('LOCKOUT_TIME', 900); // 15 minutes in seconds
+define('SESSION_TIMEOUT', 3600); // 1 hour in seconds
+define('ENABLE_IP_VALIDATION', true);
+define('ENABLE_CSRF_PROTECTION', true);
+
+// TEMP: enable verbose error reporting for debugging
+ini_set('display_errors', '1');
+ini_set('display_startup_errors', '1');
+error_reporting(E_ALL);
+ini_set('log_errors', '1');
+ini_set('error_log', __DIR__ . '/logs/php-error.log');
+
+// Create database connection
+$conn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
+
+// Check connection
+if ($conn->connect_error) {
+    error_log("DB connect failed: " . $conn->connect_error);
+    die("Connection failed.");
 }
 
 // Function to check if user is logged in

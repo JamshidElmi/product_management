@@ -1,19 +1,8 @@
 <?php
+require_once 'config.php'; // This will handle session configuration
 
-// Add this at the top of both files to debug
-// error_reporting(E_ALL);
-// ini_set('display_errors', 1);
-// session_start();
-// var_dump($_SESSION);
-
-
-session_start();
-
-// Check if user is NOT logged in
-if (!isset($_SESSION['user_id'])) {
-    header("Location: login.php");
-    exit();
-}
+// Check if user is NOT logged in (use proper authentication function)
+requireLogin();
 
 require_once 'config.php';
 requireLogin();

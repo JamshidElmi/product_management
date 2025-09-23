@@ -1,15 +1,11 @@
 <?php
-// Session cleanup script - destroys all sessions and clears cookies
+// Include config.php to ensure consistent session configuration
+require_once 'config.php';
 
 echo "<h2>Session Cleanup Tool</h2>";
 
-// Start session if not already started
-if (session_status() === PHP_SESSION_NONE) {
-    session_name('PRODUCT_MGMT_SESSION');
-    session_start();
-}
-
 echo "<p>Current Session ID: " . session_id() . "</p>";
+echo "<p>Session Name: " . session_name() . "</p>";
 echo "<p>Current Session Data: <pre>" . print_r($_SESSION, true) . "</pre></p>";
 
 if (isset($_GET['cleanup'])) {
