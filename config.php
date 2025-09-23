@@ -16,6 +16,14 @@ define('SESSION_TIMEOUT', 3600); // 1 hour in seconds
 define('ENABLE_IP_VALIDATION', true);
 define('ENABLE_CSRF_PROTECTION', true);
 
+// TEMP: enable verbose error reporting for debugging — remove after troubleshooting
+ini_set('display_errors', '1');
+ini_set('display_startup_errors', '1');
+error_reporting(E_ALL);
+ini_set('log_errors', '1');
+// Write log into a file inside the project (create writable logs/ directory)
+ini_set('error_log', __DIR__ . '/logs/php-error.log');
+
 // Create database connection
 $conn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
 
@@ -277,4 +285,4 @@ function logAdminAction($action, $details = '', $affected_id = null) {
     $stmt->bind_param("issis", $user_id, $action, $details, $affected_id, $ip_address);
     $stmt->execute();
 }
-?> 
+?>
