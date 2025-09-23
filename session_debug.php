@@ -39,6 +39,7 @@ if ($isLoggedIn) {
 echo "<h3>Actions:</h3>";
 echo "<p><a href='login.php'>Go to Login</a></p>";
 echo "<p><a href='index.php'>Go to Admin Panel</a></p>";
+echo "<p><a href='logout.php' style='color: red; font-weight: bold;'>Logout (Test)</a></p>";
 echo "<p><a href='debug_test.php'>Debug Test</a></p>";
 echo "<p><a href='view_logs.php' target='_blank'>View Logs</a></p>";
 
