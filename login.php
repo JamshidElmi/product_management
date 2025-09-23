@@ -19,6 +19,7 @@ $posted_username = '';
 
 // Handle login
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    error_log("[LOGIN DEBUG] POST received from " . ($_SERVER['REMOTE_ADDR'] ?? 'unknown'));
     $username = filter_input(INPUT_POST, 'username', FILTER_SANITIZE_STRING);
     $password = filter_input(INPUT_POST, 'password', FILTER_SANITIZE_STRING);
     $recaptcha_response = $_POST['g-recaptcha-response'] ?? '';

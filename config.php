@@ -31,7 +31,8 @@ $conn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
 
 // Check connection
 if ($conn->connect_error) {
-    die("Connection failed: " . $conn->connect_error);
+    error_log("DB connect failed: " . $conn->connect_error);
+    die("Connection failed.");
 }
 
 // Enhanced session configuration
@@ -90,6 +91,7 @@ function requireLogin() {
 // Function to verify reCAPTCHA
 function verifyRecaptcha($response) {
     if (empty($response)) {
+        error_log("[RECAPTCHA] empty response");
         return false;
     }
     
@@ -107,6 +109,11 @@ function verifyRecaptcha($response) {
     curl_setopt($verify, CURLOPT_SSL_VERIFYPEER, false);
     
     $response = curl_exec($verify);
+    if ($response === false) {
+        error_log("[RECAPTCHA] curl_exec failed: " . curl_error($verify));
+    } else {
+        error_log("[RECAPTCHA] google response: " . substr($response,0,1000));
+    }
     curl_close($verify);
     
     $result = json_decode($response, true);
