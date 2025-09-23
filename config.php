@@ -44,6 +44,7 @@ if (session_status() === PHP_SESSION_NONE) {
     ini_set('session.cookie_samesite', 'Lax'); // Changed from Strict for better compatibility
     ini_set('session.cookie_lifetime', 0); // Session cookies (expire when browser closes)
     ini_set('session.cookie_path', '/'); // Available for entire domain
+    ini_set('session.cookie_domain', 'yfsuite.lubricityinnovations.com'); // Set proper domain without leading dot
     
     // Set session name to avoid conflicts
     session_name('PRODUCT_MGMT_SESSION');
@@ -51,6 +52,7 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
     
     error_log("[SESSION DEBUG] Session started. ID: " . session_id() . ", Name: " . session_name());
+    error_log("[SESSION DEBUG] Domain: " . ini_get('session.cookie_domain') . ", Path: " . ini_get('session.cookie_path'));
     
     // Regenerate session ID periodically (but not on every request)
     if (!isset($_SESSION['last_regeneration'])) {

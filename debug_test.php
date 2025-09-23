@@ -57,6 +57,7 @@ echo "<p>Display errors: " . (ini_get('display_errors') ? 'Yes' : 'No') . "</p>"
 echo "<h3>Navigation</h3>";
 echo "<p><a href='index.php'>Go to Admin Panel</a></p>";
 echo "<p><a href='login.php'>Go to Login</a></p>";
+echo "<p><a href='session_cleanup.php' style='color: orange; font-weight: bold;'>Session Cleanup Tool</a></p>";
 echo "<p><a href='view_logs.php' target='_blank'>View Error Logs</a></p>";
 
 ?>

@@ -18,14 +18,18 @@ error_log("[LOGOUT DEBUG] Session before destroy: " . print_r($_SESSION, true));
 // Unset all session variables
 $_SESSION = array();
 
-// Delete the session cookie
+// Delete the session cookie with multiple domain variations
 if (ini_get("session.use_cookies")) {
     $params = session_get_cookie_params();
     error_log("[LOGOUT DEBUG] Clearing session cookie with params: " . print_r($params, true));
-    setcookie(session_name(), '', time() - 42000,
-        $params["path"], $params["domain"],
-        $params["secure"], $params["httponly"]
-    );
+    
+    // Clear cookie with multiple domain variations to ensure it's deleted
+    setcookie(session_name(), '', time() - 42000, '/', 'yfsuite.lubricityinnovations.com', true, true);
+    setcookie(session_name(), '', time() - 42000, '/', '.yfsuite.lubricityinnovations.com', true, true);
+    setcookie(session_name(), '', time() - 42000, '/', '', true, true);
+    setcookie(session_name(), '', time() - 42000, '/', $_SERVER['HTTP_HOST'], true, true);
+    
+    error_log("[LOGOUT DEBUG] Session cookies cleared with multiple domain variations");
 }
 
 // Destroy the session
