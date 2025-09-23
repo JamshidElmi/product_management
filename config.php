@@ -37,18 +37,27 @@ if ($conn->connect_error) {
 
 // Enhanced session configuration
 if (session_status() === PHP_SESSION_NONE) {
-    // Secure session settings
+    // Secure session settings for HTTPS hosting
     ini_set('session.cookie_httponly', 1);
-    ini_set('session.cookie_secure', 0); // Set to 1 if using HTTPS
+    ini_set('session.cookie_secure', 1); // Enable for HTTPS
     ini_set('session.use_strict_mode', 1);
-    ini_set('session.cookie_samesite', 'Strict');
+    ini_set('session.cookie_samesite', 'Lax'); // Changed from Strict for better compatibility
+    ini_set('session.cookie_lifetime', 0); // Session cookies (expire when browser closes)
+    ini_set('session.cookie_path', '/'); // Available for entire domain
+    
+    // Set session name to avoid conflicts
+    session_name('PRODUCT_MGMT_SESSION');
     
     session_start();
     
-    // Regenerate session ID periodically
+    error_log("[SESSION DEBUG] Session started. ID: " . session_id() . ", Name: " . session_name());
+    
+    // Regenerate session ID periodically (but not on every request)
     if (!isset($_SESSION['last_regeneration'])) {
         $_SESSION['last_regeneration'] = time();
-    } elseif (time() - $_SESSION['last_regeneration'] > 300) { // Every 5 minutes
+        error_log("[SESSION DEBUG] Set initial last_regeneration: " . $_SESSION['last_regeneration']);
+    } elseif (time() - $_SESSION['last_regeneration'] > 1800) { // Every 30 minutes instead of 5
+        error_log("[SESSION DEBUG] Regenerating session ID (30 min passed)");
         session_regenerate_id(true);
         $_SESSION['last_regeneration'] = time();
     }

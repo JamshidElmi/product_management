@@ -89,8 +89,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         // Successful login
                         clearLoginAttempts($ip_address);
                         
-                        // Set session variables
-                        session_regenerate_id(true);
+                        // Set session variables (don't regenerate ID to avoid session loss)
                         $_SESSION['user_id'] = $user['id'];
                         $_SESSION['username'] = $user['username'];
                         $_SESSION['last_activity'] = time();
@@ -100,7 +99,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         // Log server environment info for debugging
                         error_log("[LOGIN DEBUG] Server IP: " . ($_SERVER['SERVER_ADDR'] ?? 'unknown'));
                         error_log("[LOGIN DEBUG] Remote IP: " . $ip_address);
-                        error_log("[LOGIN DEBUG] Session ID after regeneration: " . session_id());
+                        error_log("[LOGIN DEBUG] Session ID: " . session_id());
                         error_log("[LOGIN DEBUG] Session variables set: " . print_r($_SESSION, true));
                         
                         // Log successful login
@@ -143,7 +142,7 @@ ob_start();
             <div class="flex flex-col items-center mb-6">
                 <img class="w-80 mb-6" src="imgs/yfs.png" alt="YFS Logo">
                 <h2 class="text-2xl font-semibold text-gray-900 dark:text-white">Sign in to your account</h2>
-                <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Product Management System</p>
+                <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">YFSuite Product Management System</p>
             </div>
 
             <form class="mt-6 space-y-6" method="POST" novalidate>
