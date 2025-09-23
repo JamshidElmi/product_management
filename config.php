@@ -56,33 +56,49 @@ if (session_status() === PHP_SESSION_NONE) {
 
 // Function to check if user is logged in
 function isLoggedIn() {
+    error_log("[AUTH DEBUG] isLoggedIn() called. Session ID: " . session_id());
+    error_log("[AUTH DEBUG] Session contents: " . print_r($_SESSION, true));
+    
     if (!isset($_SESSION['user_id'])) {
+        error_log("[AUTH DEBUG] No user_id in session");
         return false;
     }
     
+    error_log("[AUTH DEBUG] User ID found: " . $_SESSION['user_id']);
+    
     // Check session timeout
     if (isset($_SESSION['last_activity']) && (time() - $_SESSION['last_activity'] > SESSION_TIMEOUT)) {
+        error_log("[AUTH DEBUG] Session timeout - last activity: " . $_SESSION['last_activity'] . ", current time: " . time() . ", timeout: " . SESSION_TIMEOUT);
         session_destroy();
         return false;
     }
     
     // Update last activity time
     $_SESSION['last_activity'] = time();
+    error_log("[AUTH DEBUG] Updated last_activity to: " . $_SESSION['last_activity']);
     
     // Validate IP address if enabled
     if (ENABLE_IP_VALIDATION && isset($_SESSION['ip_address'])) {
-        if ($_SESSION['ip_address'] !== $_SERVER['REMOTE_ADDR']) {
+        $current_ip = $_SERVER['REMOTE_ADDR'];
+        $session_ip = $_SESSION['ip_address'];
+        error_log("[AUTH DEBUG] IP validation - Session IP: $session_ip, Current IP: $current_ip");
+        if ($session_ip !== $current_ip) {
+            error_log("[AUTH DEBUG] IP mismatch, destroying session");
             session_destroy();
             return false;
         }
     }
     
+    error_log("[AUTH DEBUG] isLoggedIn() returning true");
     return true;
 }
 
 // Function to redirect if not logged in
 function requireLogin() {
-    if (!isLoggedIn()) {
+    $loggedIn = isLoggedIn();
+    error_log("[AUTH DEBUG] requireLogin() called. isLoggedIn result: " . ($loggedIn ? 'true' : 'false'));
+    if (!$loggedIn) {
+        error_log("[AUTH DEBUG] requireLogin() redirecting to login.php");
         header("Location: login.php");
         exit();
     }
@@ -90,8 +106,10 @@ function requireLogin() {
 
 // Function to verify reCAPTCHA
 function verifyRecaptcha($response) {
+    error_log("[RECAPTCHA DEBUG] verifyRecaptcha called with response length: " . strlen($response ?? ''));
+    
     if (empty($response)) {
-        error_log("[RECAPTCHA] empty response");
+        error_log("[RECAPTCHA DEBUG] empty response");
         return false;
     }
     
@@ -100,6 +118,8 @@ function verifyRecaptcha($response) {
         'response' => $response,
         'remoteip' => $_SERVER['REMOTE_ADDR']
     );
+    
+    error_log("[RECAPTCHA DEBUG] Sending data to Google: " . print_r($data, true));
     
     $verify = curl_init();
     curl_setopt($verify, CURLOPT_URL, "https://www.google.com/recaptcha/api/siteverify");
@@ -110,14 +130,21 @@ function verifyRecaptcha($response) {
     
     $response = curl_exec($verify);
     if ($response === false) {
-        error_log("[RECAPTCHA] curl_exec failed: " . curl_error($verify));
+        error_log("[RECAPTCHA DEBUG] curl_exec failed: " . curl_error($verify));
+        curl_close($verify);
+        return false;
     } else {
-        error_log("[RECAPTCHA] google response: " . substr($response,0,1000));
+        error_log("[RECAPTCHA DEBUG] google response: " . substr($response, 0, 1000));
     }
     curl_close($verify);
     
     $result = json_decode($response, true);
-    return isset($result['success']) && $result['success'] === true;
+    error_log("[RECAPTCHA DEBUG] Decoded result: " . print_r($result, true));
+    
+    $success = isset($result['success']) && $result['success'] === true;
+    error_log("[RECAPTCHA DEBUG] Returning: " . ($success ? 'true' : 'false'));
+    
+    return $success;
 }
 
 // Function to check login attempts and lockout
