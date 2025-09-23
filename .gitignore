@@ -1,0 +1,84 @@
+# Node / JS (if ever used)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+yarn.lock
+
+#database and Markdowns
+*.db
+*.sqlite
+*.sql
+*.md
+*.markdown
+
+# Composer / PHP
+/vendor/
+/.vendor/
+composer.lock
+
+# PHPStorm / JetBrains
+.idea/
+
+# VS Code
+.vscode/
+
+# OS files
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Logs and temporary files
+logs/
+*.log
+*.tmp
+*.swp
+*.swo
+*.bak
+*.old
+
+# Env files and secrets
+.env
+.env.*
+.env.local
+.env.production
+.env.*.local
+
+# Application config that may contain credentials
+# config.php
+/credentials.php
+/secrets.php
+
+# XAMPP / local server files
+*.pid
+
+# Images and uploads (if you don't want to track them)
+# imgs/uploads/
+
+# Database dumps
+*.sql
+*.sql.gz
+
+# Build output
+dist/
+build/
+
+# OS generated files
+Thumbs.db
+.DS_Store
+
+# Ignore PHP unit cache
+.phpunit.result.cache
+
+# Ignore JetBrains IDEs
+*.iml
+out/
+
+# Ignore caches
+.cache/
+
+# Optional: allow tracking of img assets except sensitive ones
+# Uncomment if you want to keep images in repo
+# !imgs/
