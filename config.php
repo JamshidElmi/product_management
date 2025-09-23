@@ -82,7 +82,12 @@ function isLoggedIn() {
         $current_ip = $_SERVER['REMOTE_ADDR'];
         $session_ip = $_SESSION['ip_address'];
         error_log("[AUTH DEBUG] IP validation - Session IP: $session_ip, Current IP: $current_ip");
-        if ($session_ip !== $current_ip) {
+        
+        // Skip IP validation if remote IP equals server IP (proxy/load balancer scenario)
+        $server_ip = $_SERVER['SERVER_ADDR'] ?? '';
+        if ($current_ip === $server_ip) {
+            error_log("[AUTH DEBUG] Remote IP equals server IP ($current_ip), skipping IP validation (proxy environment)");
+        } elseif ($session_ip !== $current_ip) {
             error_log("[AUTH DEBUG] IP mismatch, destroying session");
             session_destroy();
             return false;

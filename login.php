@@ -97,6 +97,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $_SESSION['ip_address'] = $ip_address;
                         $_SESSION['login_time'] = time();
                         
+                        // Log server environment info for debugging
+                        error_log("[LOGIN DEBUG] Server IP: " . ($_SERVER['SERVER_ADDR'] ?? 'unknown'));
+                        error_log("[LOGIN DEBUG] Remote IP: " . $ip_address);
+                        error_log("[LOGIN DEBUG] Session ID after regeneration: " . session_id());
                         error_log("[LOGIN DEBUG] Session variables set: " . print_r($_SESSION, true));
                         
                         // Log successful login
