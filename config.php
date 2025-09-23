@@ -6,8 +6,10 @@ define('DB_NAME', 'u5thlbnw7t4i_product_manager');
 
 // reCAPTCHA Configuration
 // You need to get these from https://www.google.com/recaptcha/admin
-define('RECAPTCHA_SITE_KEY', '6LfyqM4rAAAAAERxDaKvmNLKaVECtfCUzZArsAUJ'); // Test key - replace with your actual site key
-define('RECAPTCHA_SECRET_KEY', '6LfyqM4rAAAAAK5YYXcsi9nyob6pfTbYHZV6nxIH'); // Test key - replace with your actual secret key
+define('RECAPTCHA_SITE_KEY', '6LfSuNIrAAAAAL_yqGHflka0opcbMSTwJWxV6dFg'); // hosted
+// define('RECAPTCHA_SITE_KEY', '6LfyqM4rAAAAAERxDaKvmNLKaVECtfCUzZArsAUJ'); // local
+define('RECAPTCHA_SECRET_KEY', '6LfSuNIrAAAAAHRxpHKoOsSstPqAdOvyqQjLNzef'); // hosted
+// define('RECAPTCHA_SECRET_KEY', '6LfyqM4rAAAAAK5YYXcsi9nyob6pfTbYHZV6nxIH'); // local
 
 // Security Configuration
 define('MAX_LOGIN_ATTEMPTS', 5);
