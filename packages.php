@@ -51,13 +51,23 @@ function handleImageUpload($file, $current_image = null) {
 
 // Handle form submissions
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    error_log("[PACKAGES DEBUG] POST received. Session ID: " . session_id());
+    error_log("[PACKAGES DEBUG] Session contents: " . print_r($_SESSION, true));
+    error_log("[PACKAGES DEBUG] POST data keys: " . implode(', ', array_keys($_POST)));
+    
     // Verify CSRF token
-    if (!verifyCSRFToken($_POST['csrf_token'] ?? '')) {
+    $provided_token = $_POST['csrf_token'] ?? '';
+    error_log("[PACKAGES DEBUG] Provided CSRF token: $provided_token");
+    
+    if (!verifyCSRFToken($provided_token)) {
         logSecurityEvent('csrf_token_invalid', $_SERVER['REMOTE_ADDR'], 'Invalid CSRF token in packages.php');
         $_SESSION['error'] = "Security error: Invalid token. Please try again.";
+        error_log("[PACKAGES DEBUG] CSRF verification failed, redirecting");
         header("Location: packages.php");
         exit();
     }
+    
+    error_log("[PACKAGES DEBUG] CSRF verification passed");
     
     switch ($_POST['action']) {
         case 'add':

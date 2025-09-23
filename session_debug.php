@@ -40,6 +40,7 @@ echo "<h3>Actions:</h3>";
 echo "<p><a href='login.php'>Go to Login</a></p>";
 echo "<p><a href='index.php'>Go to Admin Panel</a></p>";
 echo "<p><a href='navigation_test.php' style='color: blue; font-weight: bold;'>Navigation Test</a></p>";
+echo "<p><a href='csrf_test.php' style='color: purple; font-weight: bold;'>CSRF Token Test</a></p>";
 echo "<p><a href='logout.php' style='color: red; font-weight: bold;'>Logout (Test)</a></p>";
 echo "<p><a href='session_cleanup.php' style='color: orange; font-weight: bold;'>Session Cleanup Tool</a></p>";
 echo "<p><a href='debug_test.php'>Debug Test</a></p>";

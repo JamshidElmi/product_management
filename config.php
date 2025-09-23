@@ -242,13 +242,19 @@ function clearLoginAttempts($ip_address) {
 function generateCSRFToken() {
     if (!isset($_SESSION['csrf_token'])) {
         $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+        error_log("[CSRF DEBUG] Generated new CSRF token: " . $_SESSION['csrf_token']);
+    } else {
+        error_log("[CSRF DEBUG] Using existing CSRF token: " . $_SESSION['csrf_token']);
     }
     return $_SESSION['csrf_token'];
 }
 
 // Function to verify CSRF token
 function verifyCSRFToken($token) {
-    return isset($_SESSION['csrf_token']) && hash_equals($_SESSION['csrf_token'], $token);
+    $session_token = $_SESSION['csrf_token'] ?? '';
+    $is_valid = isset($_SESSION['csrf_token']) && hash_equals($_SESSION['csrf_token'], $token);
+    error_log("[CSRF DEBUG] Verifying token. Session token: $session_token, Provided token: $token, Valid: " . ($is_valid ? 'true' : 'false'));
+    return $is_valid;
 }
 
 // Function to log security events
