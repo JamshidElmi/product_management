@@ -22,10 +22,26 @@ if (session_status() === PHP_SESSION_NONE) {
     ini_set('session.cookie_httponly', 1);
     // Only require secure cookies when running under HTTPS
     ini_set('session.cookie_secure', $is_https ? 1 : 0);
-    // SIMPLIFIED SESSION CONFIG FOR DEBUGGING - No complex cookie settings
+    ini_set('session.use_strict_mode', 1);
+    // Use 'Lax' for better compatibility - 'None' is too restrictive for regular login flows
+    ini_set('session.cookie_samesite', 'Lax');
     ini_set('session.cookie_lifetime', 0);
     ini_set('session.cookie_path', '/');
-    // Use basic session settings without complex domain/secure configurations
+    // Compute cookie domain dynamically from the request host (strip port if present).
+    // Leave blank for local to allow browser to accept cookies on localhost.
+        $cookie_domain = '';
+        if (defined('SESSION_COOKIE_FORCE_HOST_ONLY') && SESSION_COOKIE_FORCE_HOST_ONLY === true) {
+            // Host-only: leave cookie domain blank so browser treats cookie as host-only
+            $cookie_domain = '';
+            error_log("[SESSION DEBUG] SESSION_COOKIE_FORCE_HOST_ONLY is enabled — using host-only cookie (no Domain attribute)");
+        } else {
+            // For production servers, use host-only cookies for better compatibility
+            // Setting domain explicitly can cause cross-subdomain issues
+            $cookie_domain = '';
+            error_log("[SESSION DEBUG] Using host-only cookie for better server compatibility");
+        }
+    ini_set('session.cookie_domain', $cookie_domain);
+    error_log("[SESSION DEBUG] Computed cookie settings - domain: " . ini_get('session.cookie_domain') . ", secure: " . ($is_https ? '1' : '0') . ", samesite: " . ini_get('session.cookie_samesite'));
     
     // Set consistent session name across ALL pages
     session_name('PRODUCT_MGMT_SESSION');
@@ -56,11 +72,11 @@ define('DB_NAME', 'u5thlbnw7t4i_product_manager');
 define('RECAPTCHA_SITE_KEY', '6LfSuNIrAAAAAL_yqGHflka0opcbMSTwJWxV6dFg');
 define('RECAPTCHA_SECRET_KEY', '6LfSuNIrAAAAAHRxpHKoOsSstPqAdOvyqQjLNzef');
 
-// Security Configuration - DISABLED FOR DEBUGGING
-define('MAX_LOGIN_ATTEMPTS', 999999); // Effectively disabled
-define('LOCKOUT_TIME', 0); // No lockout
-define('SESSION_TIMEOUT', 86400); // 24 hours - very long timeout
-define('ENABLE_IP_VALIDATION', false); // Disable IP validation
+// Security Configuration
+define('MAX_LOGIN_ATTEMPTS', 5);
+define('LOCKOUT_TIME', 900); // 15 minutes in seconds
+define('SESSION_TIMEOUT', 3600); // 1 hour in seconds
+define('ENABLE_IP_VALIDATION', true);
 
 // Force host-only cookies for server compatibility
 // This ensures cookies work properly on production servers
@@ -118,23 +134,59 @@ if ($conn->connect_error) {
     die("Connection failed.");
 }
 
-// Function to check if user is logged in - SIMPLIFIED FOR DEBUGGING
+// Function to check if user is logged in
 function isLoggedIn() {
-    // DISABLED ALL SECURITY CHECKS FOR DEBUGGING - Just check user_id exists
-    return isset($_SESSION['user_id']);
+    error_log("[AUTH DEBUG] isLoggedIn() called. Session ID: " . session_id());
+    error_log("[AUTH DEBUG] Session contents: " . print_r($_SESSION, true));
+    
+    if (!isset($_SESSION['user_id'])) {
+        error_log("[AUTH DEBUG] No user_id in session");
+        return false;
+    }
+    
+    error_log("[AUTH DEBUG] User ID found: " . $_SESSION['user_id']);
+    
+    // Check session timeout
+    if (isset($_SESSION['last_activity']) && (time() - $_SESSION['last_activity'] > SESSION_TIMEOUT)) {
+        error_log("[AUTH DEBUG] Session timeout - last activity: " . $_SESSION['last_activity'] . ", current time: " . time() . ", timeout: " . SESSION_TIMEOUT);
+        session_destroy();
+        return false;
+    }
+    
+    // Update last activity time
+    $_SESSION['last_activity'] = time();
+    error_log("[AUTH DEBUG] Updated last_activity to: " . $_SESSION['last_activity']);
+    
+    // Validate IP address if enabled
+    if (ENABLE_IP_VALIDATION && isset($_SESSION['ip_address'])) {
+        $current_ip = $_SERVER['REMOTE_ADDR'];
+        $session_ip = $_SESSION['ip_address'];
+        error_log("[AUTH DEBUG] IP validation - Session IP: $session_ip, Current IP: $current_ip");
+        
+        // Skip IP validation if remote IP equals server IP (proxy/load balancer scenario)
+        $server_ip = $_SERVER['SERVER_ADDR'] ?? '';
+        if ($current_ip === $server_ip) {
+            error_log("[AUTH DEBUG] Remote IP equals server IP ($current_ip), skipping IP validation (proxy environment)");
+        } elseif ($session_ip !== $current_ip) {
+            error_log("[AUTH DEBUG] IP mismatch, destroying session");
+            session_destroy();
+            return false;
+        }
+    }
+    
+    error_log("[AUTH DEBUG] isLoggedIn() returning true");
+    return true;
 }
 
-// Function to redirect if not logged in - SIMPLIFIED FOR DEBUGGING
+// Function to redirect if not logged in
 function requireLogin() {
-    // DISABLED FOR DEBUGGING - Allow access without login
-    return true;
-    
-    /* ORIGINAL CODE DISABLED
-    if (!isLoggedIn()) {
+    $loggedIn = isLoggedIn();
+    error_log("[AUTH DEBUG] requireLogin() called. isLoggedIn result: " . ($loggedIn ? 'true' : 'false'));
+    if (!$loggedIn) {
+        error_log("[AUTH DEBUG] requireLogin() redirecting to login.php");
         header("Location: login.php");
         exit();
     }
-    */
 }
 
 // Function to verify reCAPTCHA
@@ -180,16 +232,72 @@ function verifyRecaptcha($response) {
     return $success;
 }
 
-// Function to check login attempts and lockout - DISABLED FOR DEBUGGING
+// Function to check login attempts and lockout
 function checkLoginAttempts($ip_address) {
-    // DISABLED FOR DEBUGGING - Always allow login attempts
+    global $conn;
+    // Ensure the table exists to avoid SELECT errors
+    $conn->query("CREATE TABLE IF NOT EXISTS login_attempts (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        ip_address VARCHAR(45) NOT NULL,
+        username VARCHAR(255),
+        attempts INT DEFAULT 1,
+        last_attempt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        UNIQUE KEY unique_ip (ip_address)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;");
+
+    $stmt = $conn->prepare("SELECT attempts, last_attempt FROM login_attempts WHERE ip_address = ?");
+    if (!$stmt) {
+        // If prepare fails, assume no lockout and allow attempt (avoid fatal)
+        return true;
+    }
+    $stmt->bind_param("s", $ip_address);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    
+    if ($result->num_rows > 0) {
+        $row = $result->fetch_assoc();
+        $attempts = $row['attempts'];
+        $last_attempt = strtotime($row['last_attempt']);
+        
+        // Check if lockout period has expired
+        if (time() - $last_attempt > LOCKOUT_TIME) {
+            // Reset attempts
+            $stmt = $conn->prepare("DELETE FROM login_attempts WHERE ip_address = ?");
+            $stmt->bind_param("s", $ip_address);
+            $stmt->execute();
+            return true;
+        }
+        
+        // Check if max attempts exceeded
+        if ($attempts >= MAX_LOGIN_ATTEMPTS) {
+            return false;
+        }
+    }
+    
     return true;
 }
 
-// Function to record failed login attempt - DISABLED FOR DEBUGGING
+// Function to record failed login attempt
 function recordFailedLogin($ip_address, $username = '') {
-    // DISABLED FOR DEBUGGING - Do nothing
-    return;
+    global $conn;
+    
+    // Create table if it doesn't exist
+    $conn->query("CREATE TABLE IF NOT EXISTS login_attempts (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        ip_address VARCHAR(45) NOT NULL,
+        username VARCHAR(255),
+        attempts INT DEFAULT 1,
+        last_attempt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        UNIQUE KEY unique_ip (ip_address)
+    )");
+    
+    $stmt = $conn->prepare("INSERT INTO login_attempts (ip_address, username, attempts) VALUES (?, ?, 1) 
+                           ON DUPLICATE KEY UPDATE attempts = attempts + 1, username = ?, last_attempt = CURRENT_TIMESTAMP");
+    $stmt->bind_param("sss", $ip_address, $username, $username);
+    $stmt->execute();
+    
+    // Log security event
+    logSecurityEvent('failed_login', "Failed login attempt from IP: $ip_address, Username: $username");
 }
 
 // Function to clear login attempts on successful login
@@ -201,15 +309,88 @@ function clearLoginAttempts($ip_address) {
     $stmt->execute();
 }
 
-// Function to log security events - DISABLED FOR DEBUGGING
+// Function to log security events
 function logSecurityEvent($event_type, $message, $user_id = null) {
-    // DISABLED FOR DEBUGGING - Do nothing, no security logging
-    return;
+    global $conn;
+    
+    // Create security_log table if it doesn't exist
+    $conn->query("CREATE TABLE IF NOT EXISTS security_log (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        event_type VARCHAR(50) NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_event_type (event_type),
+        INDEX idx_created_at (created_at)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;");
+
+    // Ensure required columns exist (backwards-compatible additions)
+    $requiredColumns = [
+        'message' => 'TEXT',
+        'user_id' => 'INT',
+        'ip_address' => 'VARCHAR(45)',
+        'user_agent' => 'TEXT'
+    ];
+
+    $columnsRes = $conn->query("SHOW COLUMNS FROM security_log");
+    $existing = [];
+    if ($columnsRes) {
+        while ($col = $columnsRes->fetch_assoc()) {
+            $existing[$col['Field']] = true;
+        }
+    }
+
+    foreach ($requiredColumns as $col => $type) {
+        if (!isset($existing[$col])) {
+            // Add the missing column
+            $sql = "ALTER TABLE security_log ADD COLUMN $col $type";
+            // For user_id we allow NULL, for ip_address set NULL default, message/user_agent as TEXT
+            if ($col === 'user_id') $sql .= " NULL";
+            if ($col === 'ip_address') $sql .= " NULL";
+            $conn->query($sql);
+        }
+    }
+
+    $ip_address = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+    $user_agent = $_SERVER['HTTP_USER_AGENT'] ?? 'unknown';
+
+    $stmt = $conn->prepare("INSERT INTO security_log (event_type, message, user_id, ip_address, user_agent) VALUES (?, ?, ?, ?, ?)");
+    if ($stmt) {
+        $stmt->bind_param("ssiss", $event_type, $message, $user_id, $ip_address, $user_agent);
+        $stmt->execute();
+    } else {
+        // If prepare fails, attempt a safe INSERT with minimal fields to avoid fatal
+        $safeStmt = $conn->prepare("INSERT INTO security_log (event_type) VALUES (?)");
+        if ($safeStmt) {
+            $safeStmt->bind_param("s", $event_type);
+            $safeStmt->execute();
+        }
+    }
 }
 
-// Function to log admin actions - DISABLED FOR DEBUGGING
+// Function to log admin actions
 function logAdminAction($action, $details = '', $affected_id = null) {
-    // DISABLED FOR DEBUGGING - Do nothing, no admin logging
-    return;
+    if (!isLoggedIn()) return;
+    
+    global $conn;
+    
+    // Create admin_log table if it doesn't exist
+    $conn->query("CREATE TABLE IF NOT EXISTS admin_log (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        user_id INT NOT NULL,
+        action VARCHAR(100) NOT NULL,
+        details TEXT,
+        affected_id INT,
+        ip_address VARCHAR(45),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_user_id (user_id),
+        INDEX idx_action (action),
+        INDEX idx_created_at (created_at)
+    )");
+    
+    $user_id = $_SESSION['user_id'];
+    $ip_address = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+    
+    $stmt = $conn->prepare("INSERT INTO admin_log (user_id, action, details, affected_id, ip_address) VALUES (?, ?, ?, ?, ?)");
+    $stmt->bind_param("issis", $user_id, $action, $details, $affected_id, $ip_address);
+    $stmt->execute();
 }
 ?>
