@@ -7,7 +7,19 @@ require_once 'config.php';
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Product Management System</title>
+    <title><?php echo defined('APP_NAME') ? APP_NAME : 'Product Management System'; ?></title>
+    
+    <!-- Favicons -->
+    <link rel="apple-touch-icon" sizes="180x180" href="imgs/favicons/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="imgs/favicons/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="imgs/favicons/favicon-16x16.png">
+    <link rel="manifest" href="imgs/favicons/site.webmanifest">
+    <link rel="mask-icon" href="imgs/favicons/safari-pinned-tab.svg" color="#3B82F6">
+    <link rel="shortcut icon" href="imgs/favicons/favicon.ico">
+    <meta name="msapplication-TileColor" content="<?php echo defined('APP_THEME_COLOR') ? APP_THEME_COLOR : '#3B82F6'; ?>">
+    <meta name="msapplication-config" content="imgs/favicons/browserconfig.xml">
+    <meta name="theme-color" content="<?php echo defined('APP_THEME_COLOR') ? APP_THEME_COLOR : '#3B82F6'; ?>">
+    
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Ionicons CDN -->
     <script type="module" src="https://unpkg.com/ionicons@7.2.2/dist/ionicons/ionicons.esm.js"></script>

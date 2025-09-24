@@ -1,0 +1,27 @@
+{
+    "name": "YFS Product Management System",
+    "short_name": "YFS Manager",
+    "description": "Comprehensive product management system with user authentication and order tracking",
+    "icons": [
+        {
+            "src": "android-chrome-192x192.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "maskable any"
+        },
+        {
+            "src": "android-chrome-512x512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "maskable any"
+        }
+    ],
+    "theme_color": "#3B82F6",
+    "background_color": "#ffffff",
+    "display": "standalone",
+    "start_url": "/",
+    "orientation": "portrait-primary",
+    "scope": "/",
+    "categories": ["productivity", "business"],
+    "lang": "en"
+}
