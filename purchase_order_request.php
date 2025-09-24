@@ -542,13 +542,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $conn->begin_transaction();
         try {
             if ($updating_order_id) {
-                // Update existing order
+                // First, verify the order exists and get its details
+                $verifyOrderStmt = $conn->prepare("SELECT id, customer_id, order_reference FROM orders WHERE id = ?");
+                $verifyOrderStmt->bind_param('i', $updating_order_id);
+                $verifyOrderStmt->execute();
+                $verifyResult = $verifyOrderStmt->get_result();
+                
+                if ($verifyResult->num_rows === 0) {
+                    $verifyOrderStmt->close();
+                    throw new Exception("Order ID {$updating_order_id} not found in database. Cannot update a non-existent order.");
+                }
+                
+                $existingOrder = $verifyResult->fetch_assoc();
+                $verifyOrderStmt->close();
+                
+                // Admin logging for edit operation
+                logAdminAction('order_update', "Edited order ID: $updating_order_id");
+                
                 // Update customer information
-                    // Admin logging for edit operation
-                    logAdminAction('order_update', "Edited order ID: $updating_order_id");
-                $stmt = $conn->prepare("UPDATE customers SET customer_name=?,email=?,phone=?,addressee=?,business_name=?,address_line=?,city=?,state=?,zip=?,country=? WHERE id=(SELECT customer_id FROM orders WHERE id=?)");
-                $stmt->bind_param('ssssssssssi', $customer_name,$email,$phone,$addressee,$business_name,$address_line,$city,$state,$zip,$country,$updating_order_id);
-                $stmt->execute();
+                $stmt = $conn->prepare("UPDATE customers SET customer_name=?,email=?,phone=?,addressee=?,business_name=?,address_line=?,city=?,state=?,zip=?,country=? WHERE id=?");
+                $stmt->bind_param('ssssssssssi', $customer_name,$email,$phone,$addressee,$business_name,$address_line,$city,$state,$zip,$country,$existingOrder['customer_id']);
+                if (!$stmt->execute()) {
+                    $stmt->close();
+                    throw new Exception("Failed to update customer information: " . $conn->error);
+                }
                 $stmt->close();
                 
                 // Check if orders table has subtotal and shipping_cost columns, if not add them
@@ -561,17 +578,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 // Update order totals
                 $stmt = $conn->prepare("UPDATE orders SET subtotal=?, shipping_cost=?, total_amount=? WHERE id=?");
                 $stmt->bind_param('dddi', $subtotal_amount, $shipping_cost, $total_amount, $updating_order_id);
-                $stmt->execute();
+                if (!$stmt->execute()) {
+                    $stmt->close();
+                    throw new Exception("Failed to update order totals: " . $conn->error);
+                }
                 $stmt->close();
                 
                 // Delete existing order items
                 $stmt = $conn->prepare("DELETE FROM order_items WHERE order_id=?");
                 $stmt->bind_param('i', $updating_order_id);
-                $stmt->execute();
+                if (!$stmt->execute()) {
+                    $stmt->close();
+                    throw new Exception("Failed to delete existing order items: " . $conn->error);
+                }
                 $stmt->close();
                 
                 $order_id = $updating_order_id;
-                $order_reference = $edit_order['order_reference'];
+                $order_reference = $existingOrder['order_reference'];
             } else {
                 // Insert / find customer (simple: always insert new row)
                 $stmt = $conn->prepare("INSERT INTO customers(customer_name,email,phone,addressee,business_name,address_line,city,state,zip,country) VALUES (?,?,?,?,?,?,?,?,?,?)");
@@ -598,15 +621,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $stmt->close();
             }
 
-            // Ensure parent order exists before inserting items to avoid foreign key constraint failures
+            // Double-check that parent order still exists before inserting items
             $checkOrderStmt = $conn->prepare("SELECT id FROM orders WHERE id = ?");
             $checkOrderStmt->bind_param('i', $order_id);
             $checkOrderStmt->execute();
             $checkOrderRes = $checkOrderStmt->get_result();
-            $checkOrderStmt->close();
+            
             if (!$checkOrderRes || $checkOrderRes->num_rows === 0) {
-                throw new Exception("Order ID {$order_id} not found (parent row missing) — cannot insert order items.");
+                $checkOrderStmt->close();
+                // Provide detailed error message for debugging
+                $debugInfo = $updating_order_id ? "updating order ID $updating_order_id" : "new order";
+                throw new Exception("Order ID {$order_id} not found after database operations ($debugInfo). This may indicate a database constraint issue or transaction problem.");
             }
+            $checkOrderStmt->close();
 
             $itemStmt = $conn->prepare("INSERT INTO order_items(order_id,product_id,package_id,quantity,unit_price,line_total) VALUES (?,?,?,?,?,?)");
             foreach ($items as $it) {
