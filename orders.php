@@ -152,6 +152,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 ob_start();
 ?>
 <div class="space-y-6">
+    <!-- Error Messages -->
+    <?php if (isset($_GET['error'])): ?>
+        <div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded relative" role="alert">
+            <?php if ($_GET['error'] === 'order_not_found'): ?>
+                <strong class="font-bold">Order Not Found!</strong>
+                <span class="block sm:inline">Order ID <?php echo htmlspecialchars($_GET['id'] ?? 'unknown'); ?> does not exist or has been deleted. Please check the orders list below.</span>
+            <?php else: ?>
+                <strong class="font-bold">Error!</strong>
+                <span class="block sm:inline">An error occurred while processing your request.</span>
+            <?php endif; ?>
+        </div>
+    <?php endif; ?>
+    
+    <!-- Success Messages -->
+    <?php if (isset($_GET['updated'])): ?>
+        <div class="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded relative" role="alert">
+            <strong class="font-bold">Success!</strong>
+            <span class="block sm:inline">Order status has been updated successfully.</span>
+        </div>
+    <?php endif; ?>
+    
+    <?php if (isset($_GET['deleted'])): ?>
+        <div class="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded relative" role="alert">
+            <strong class="font-bold">Success!</strong>
+            <span class="block sm:inline">Order has been deleted successfully.</span>
+        </div>
+    <?php endif; ?>
+
     <!-- Header -->
     <div class="flex justify-between items-center">
         <h1 class="text-2xl font-semibold text-gray-900 dark:text-white">Orders Management</h1>

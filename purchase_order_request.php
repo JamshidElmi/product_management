@@ -2,6 +2,9 @@
 // Public Purchase Order Request Form (no login required)
 require_once 'config.php';
 
+// Start output buffering to allow headers to be sent even after HTML output
+ob_start();
+
 // Helper function to mimic Excel's VLOOKUP function
 function vlookup($lookup_value, $quantities, $rates, $approximate_match = true) {
     if ($approximate_match) {
@@ -32,6 +35,7 @@ $is_admin = isLoggedIn();
 if (isset($_GET['edit']) && !empty($_GET['edit'])) {
     if (!$is_admin) {
         // Silently redirect non-admin users to regular form
+        ob_end_clean();
         header("Location: purchase_order_request.php");
         exit();
     }
@@ -40,7 +44,9 @@ if (isset($_GET['edit']) && !empty($_GET['edit'])) {
     $order_id = (int)$_GET['edit'];
     
     // Fetch order details
-    $orderQuery = $conn->prepare("SELECT o.*, c.* FROM orders o LEFT JOIN customers c ON o.customer_id = c.id WHERE o.id = ?");
+    $orderQuery = $conn->prepare("SELECT o.id as order_id, o.customer_id, o.order_reference, o.status, o.total_amount, o.subtotal, o.shipping_cost, o.created_at,
+                                         c.id as customer_id_ref, c.customer_name, c.email, c.phone, c.addressee, c.business_name, c.address_line, c.city, c.state, c.zip, c.country 
+                                  FROM orders o LEFT JOIN customers c ON o.customer_id = c.id WHERE o.id = ?");
     $orderQuery->bind_param('i', $order_id);
     $orderQuery->execute();
     $orderResult = $orderQuery->get_result();
@@ -65,6 +71,7 @@ if (isset($_GET['edit']) && !empty($_GET['edit'])) {
         $itemsQuery->close();
     } else {
         // Order not found, redirect to orders page
+        ob_end_clean();
         header("Location: orders.php");
         exit();
     }
@@ -76,6 +83,7 @@ $admin_params = ['updating_order_id', 'admin_action'];
 foreach ($admin_params as $param) {
     if (isset($_GET[$param]) || isset($_POST[$param])) {
         if (!$is_admin) {
+            ob_end_clean();
             header("Location: purchase_order_request.php");
             exit();
         }
@@ -323,6 +331,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // Extra security: Block any attempt to update orders if not admin
     if ($updating_order_id && !$is_admin) {
+        ob_end_clean();
         header("Location: purchase_order_request.php");
         exit();
     }
@@ -550,7 +559,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 
                 if ($verifyResult->num_rows === 0) {
                     $verifyOrderStmt->close();
-                    throw new Exception("Order ID {$updating_order_id} not found in database. Cannot update a non-existent order.");
+                    $conn->rollback();
+                    
+                    // Log this event for debugging
+                    error_log("Attempted to edit non-existent order ID: {$updating_order_id}");
+                    
+                    // Redirect back to orders page with error message
+                    ob_end_clean();
+                    header("Location: orders.php?error=order_not_found&id={$updating_order_id}");
+                    exit();
                 }
                 
                 $existingOrder = $verifyResult->fetch_assoc();
@@ -656,6 +673,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             
             // If updating, redirect back to orders page
             if ($updating_order_id) {
+                ob_end_clean();
                 header('Location: orders.php?updated=1');
                 exit;
             }
@@ -753,7 +771,7 @@ ob_start();
     <?php endif; ?>
     <form method="post" id="po-form" novalidate>
         <?php if ($editing): ?>
-            <input type="hidden" name="updating_order_id" value="<?php echo $edit_order['id']; ?>">
+            <input type="hidden" name="updating_order_id" value="<?php echo $edit_order['order_id']; ?>">
         <?php endif; ?>
         <!-- Form fields with labels beside inputs -->
         <div class="space-y-4">
