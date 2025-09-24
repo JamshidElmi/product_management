@@ -77,7 +77,6 @@ define('MAX_LOGIN_ATTEMPTS', 5);
 define('LOCKOUT_TIME', 900); // 15 minutes in seconds
 define('SESSION_TIMEOUT', 3600); // 1 hour in seconds
 define('ENABLE_IP_VALIDATION', true);
-define('ENABLE_CSRF_PROTECTION', true);
 
 // Force host-only cookies for server compatibility
 // This ensures cookies work properly on production servers
@@ -308,25 +307,6 @@ function clearLoginAttempts($ip_address) {
     $stmt = $conn->prepare("DELETE FROM login_attempts WHERE ip_address = ?");
     $stmt->bind_param("s", $ip_address);
     $stmt->execute();
-}
-
-// Function to generate CSRF token
-function generateCSRFToken() {
-    if (!isset($_SESSION['csrf_token'])) {
-        $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
-        error_log("[CSRF DEBUG] Generated new CSRF token: " . $_SESSION['csrf_token']);
-    } else {
-        error_log("[CSRF DEBUG] Using existing CSRF token: " . $_SESSION['csrf_token']);
-    }
-    return $_SESSION['csrf_token'];
-}
-
-// Function to verify CSRF token
-function verifyCSRFToken($token) {
-    $session_token = $_SESSION['csrf_token'] ?? '';
-    $is_valid = isset($_SESSION['csrf_token']) && hash_equals($_SESSION['csrf_token'], $token);
-    error_log("[CSRF DEBUG] Verifying token. Session token: $session_token, Provided token: $token, Valid: " . ($is_valid ? 'true' : 'false'));
-    return $is_valid;
 }
 
 // Function to log security events

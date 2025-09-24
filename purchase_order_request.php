@@ -2,9 +2,6 @@
 // Public Purchase Order Request Form (no login required)
 require_once 'config.php';
 
-// CSRF token generation for all forms
-$csrf_token = generateCSRFToken();
-
 // Helper function to mimic Excel's VLOOKUP function
 function vlookup($lookup_value, $quantities, $rates, $approximate_match = true) {
     if ($approximate_match) {
@@ -310,11 +307,6 @@ $success = false;
 $order_reference = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    // CSRF protection for all POST requests
-    if (!verifyCSRFToken($_POST['csrf_token'] ?? '')) {
-        logSecurityEvent('csrf_token_invalid', $_SERVER['REMOTE_ADDR'], 'Invalid CSRF token in purchase_order_request.php');
-        $errors[] = 'Security error: Invalid form token. Please refresh and try again.';
-    }
     // Basic sanitization
     $customer_name = trim($_POST['customer_name'] ?? '');
     $email = trim($_POST['email'] ?? '');
@@ -733,7 +725,6 @@ ob_start();
         </div>
     <?php endif; ?>
     <form method="post" id="po-form" novalidate>
-        <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrf_token); ?>">
         <?php if ($editing): ?>
             <input type="hidden" name="updating_order_id" value="<?php echo $edit_order['id']; ?>">
         <?php endif; ?>

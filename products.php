@@ -2,18 +2,8 @@
 require_once 'config.php';
 requireLogin();
 
-// Generate CSRF token for forms
-$csrf_token = generateCSRFToken();
-
 // Handle form submissions
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    // Verify CSRF token
-    if (!verifyCSRFToken($_POST['csrf_token'] ?? '')) {
-        logSecurityEvent('csrf_token_invalid', $_SERVER['REMOTE_ADDR'], 'Invalid CSRF token in products.php');
-        $_SESSION['error'] = "Security error: Invalid token. Please try again.";
-        header("Location: products.php");
-        exit();
-    }
     // Server-side validation
     $errors = [];
     
@@ -175,7 +165,6 @@ ob_start();
             <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">Add New Product</h3>
             <form method="POST" class="space-y-4">
                 <input type="hidden" name="action" value="add">
-                    <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrf_token); ?>">
                  
                 <div>
                     <label for="name" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Name</label>
@@ -223,7 +212,6 @@ ob_start();
             <form method="POST" class="space-y-4">
                 <input type="hidden" name="action" value="edit">
                 <input type="hidden" name="id" id="edit_id">
-                    <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrf_token); ?>">
                 
                 <div>
                     <label for="edit_name" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Name</label>
@@ -272,7 +260,6 @@ ob_start();
             <form method="POST" class="mt-4">
                 <input type="hidden" name="action" value="delete">
                 <input type="hidden" name="id" id="delete_id">
-                    <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrf_token); ?>">
                 <div class="flex justify-end space-x-3">
                     <button type="button" onclick="document.getElementById('deleteModal').classList.add('hidden')" class="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:hover:bg-gray-600">
                         Cancel

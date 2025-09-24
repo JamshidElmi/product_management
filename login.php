@@ -1,19 +1,12 @@
 <?php
 require_once 'config.php'; // This will handle session configuration
 
-// DEBUG: Log session start and current state
-error_log("[LOGIN DEBUG] Session started. Session ID: " . session_id() . ", isLoggedIn: " . (isLoggedIn() ? 'true' : 'false'));
-if (isset($_SESSION['user_id'])) {
-    error_log("[LOGIN DEBUG] Session user_id: " . $_SESSION['user_id'] . ", last_activity: " . ($_SESSION['last_activity'] ?? 'not set'));
-}
-
 // Add this line before requiring the layout
 $hide_sidebar = true;
 $hide_header = true;  // Optional: if you want to hide the header too
 
 // Redirect if already logged in
 if (isLoggedIn()) {
-    error_log("[LOGIN DEBUG] User already logged in, redirecting to index.php");
     header("Location: index.php");
     exit();
 }
@@ -26,8 +19,6 @@ $posted_username = '';
 
 // Handle login
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    error_log("[LOGIN DEBUG] POST received from " . ($_SERVER['REMOTE_ADDR'] ?? 'unknown'));
-    error_log("[LOGIN DEBUG] Session before processing: " . print_r($_SESSION, true));
     $username = filter_input(INPUT_POST, 'username', FILTER_SANITIZE_STRING);
     $password = filter_input(INPUT_POST, 'password', FILTER_SANITIZE_STRING);
     // reCAPTCHA response is intentionally ignored since reCAPTCHA is disabled,
@@ -35,8 +26,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $recaptcha_response = $_POST['g-recaptcha-response'] ?? '';
     $ip_address = $_SERVER['REMOTE_ADDR'];
     $posted_username = $username ?? '';
-    
-    error_log("[LOGIN DEBUG] Username: '$username', Password length: " . strlen($password ?? '') . ", Recaptcha length: " . strlen($recaptcha_response ?? ''));
     
     // Check if IP is locked out
     if (!checkLoginAttempts($ip_address)) {
@@ -76,16 +65,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $recaptcha_valid = true;
         
         if ($recaptcha_valid && !empty($username) && !empty($password)) {
-            error_log("[LOGIN DEBUG] Validation passed, attempting database query");
             if (!$conn) {
-                error_log("[LOGIN DEBUG] Database connection is null");
                 die("Database connection error");
             }
 
             $sql = "SELECT * FROM users WHERE username = ?";
             $stmt = $conn->prepare($sql);
             if ($stmt) {
-                error_log("[LOGIN DEBUG] SQL prepared successfully");
                 $stmt->bind_param("s", $username);
                 $stmt->execute();
                 $result = $stmt->get_result();

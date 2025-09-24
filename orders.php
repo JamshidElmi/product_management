@@ -94,12 +94,6 @@ function buildPaginationUrl($pageNum) {
 
 // Handle status updates and deletions
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
-    // Verify CSRF token
-    if (!isset($_POST['csrf_token']) || !verifyCSRFToken($_POST['csrf_token'])) {
-        logSecurityEvent('csrf_violation', 'CSRF token validation failed for orders page', $_SESSION['user_id'] ?? null);
-        header('Location: orders.php?error=csrf');
-        exit;
-    }
     
     if ($_POST['action'] === 'update_status' && isset($_POST['order_id'], $_POST['status'])) {
         $order_id = (int)$_POST['order_id'];
@@ -245,11 +239,7 @@ ob_start();
     
     <?php if (isset($_GET['error'])): ?>
         <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded dark:bg-red-900 dark:text-red-200">
-            <?php if ($_GET['error'] === 'csrf'): ?>
-                Security error: Invalid request token. Please try again.
-            <?php else: ?>
-                Error updating order status. Please try again.
-            <?php endif; ?>
+            Error updating order status. Please try again.
         </div>
     <?php endif; ?>
     
@@ -292,7 +282,6 @@ ob_start();
                             <td class="px-6 py-4 whitespace-nowrap">
                                 <form method="post" class="inline">
                                     <input type="hidden" name="action" value="update_status">
-                                    <input type="hidden" name="csrf_token" value="<?php echo generateCSRFToken(); ?>">
                                     <input type="hidden" name="order_id" value="<?php echo $order['id']; ?>">
                                     <select name="status" onchange="this.form.submit()" class="text-xs px-2 py-1 rounded border-0 focus:ring-2 focus:ring-blue-500 <?php
                                         $current_status = $order['status'] ?: 'pending'; // Default to pending if empty
@@ -428,7 +417,6 @@ ob_start();
 <!-- Hidden delete form -->
 <form id="delete-form" method="post" style="display: none;">
     <input type="hidden" name="action" value="delete_order">
-    <input type="hidden" name="csrf_token" value="<?php echo generateCSRFToken(); ?>">
     <input type="hidden" name="order_id" id="delete-order-id">
 </form>
 

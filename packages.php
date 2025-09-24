@@ -2,9 +2,6 @@
 require_once 'config.php';
 requireLogin();
 
-// Generate CSRF token for forms
-$csrf_token = generateCSRFToken();
-
 // Function to handle image upload
 function handleImageUpload($file, $current_image = null) {
     $upload_dir = 'imgs/';
@@ -51,23 +48,6 @@ function handleImageUpload($file, $current_image = null) {
 
 // Handle form submissions
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    error_log("[PACKAGES DEBUG] POST received. Session ID: " . session_id());
-    error_log("[PACKAGES DEBUG] Session contents: " . print_r($_SESSION, true));
-    error_log("[PACKAGES DEBUG] POST data keys: " . implode(', ', array_keys($_POST)));
-    
-    // Verify CSRF token
-    $provided_token = $_POST['csrf_token'] ?? '';
-    error_log("[PACKAGES DEBUG] Provided CSRF token: $provided_token");
-    
-    if (!verifyCSRFToken($provided_token)) {
-        logSecurityEvent('csrf_token_invalid', $_SERVER['REMOTE_ADDR'], 'Invalid CSRF token in packages.php');
-        $_SESSION['error'] = "Security error: Invalid token. Please try again.";
-        error_log("[PACKAGES DEBUG] CSRF verification failed, redirecting");
-        header("Location: packages.php");
-        exit();
-    }
-    
-    error_log("[PACKAGES DEBUG] CSRF verification passed");
     
     switch ($_POST['action']) {
         case 'add':
@@ -99,7 +79,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // If validation fails, show errors and stop
             if (!empty($validation_errors)) {
                 $_SESSION['error'] = implode("<br>", $validation_errors);
-                error_log("[PACKAGES DEBUG] Validation failed: " . implode(", ", $validation_errors));
                 header("Location: packages.php");
                 exit();
             }
@@ -195,7 +174,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // If validation fails, show errors and stop
             if (!empty($validation_errors)) {
                 $_SESSION['error'] = implode("<br>", $validation_errors);
-                error_log("[PACKAGES DEBUG] Edit validation failed: " . implode(", ", $validation_errors));
                 header("Location: packages.php");
                 exit();
             }
@@ -289,9 +267,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             break;
     }
     
-    // Debug: Log before redirect
-    error_log("Packages.php: About to redirect after action: " . $_POST['action'] . ", Success message: " . (isset($_SESSION['success']) ? $_SESSION['success'] : 'None'));
-    
     header("Location: packages.php");
     exit();
 }
@@ -305,11 +280,6 @@ $packages = $conn->query("
     GROUP BY p.id
     ORDER BY p.name
 ");
-
-// Debug: check if packages query is working
-if (!$packages) {
-    error_log("Packages query failed: " . $conn->error);
-}
 
 // Get all products for the add/edit forms
 $products = $conn->query("SELECT * FROM products ORDER BY name, size");
@@ -461,7 +431,6 @@ ob_start();
             </div>
             <form method="POST" enctype="multipart/form-data" class="space-y-4">
                 <input type="hidden" name="action" value="add">
-                    <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrf_token); ?>">
                 
                 <!-- B2B/B2C Toggle in top right of form -->
                 <div class="flex justify-end mb-4">
@@ -568,7 +537,6 @@ ob_start();
             <form method="POST" enctype="multipart/form-data" class="space-y-4">
                 <input type="hidden" name="action" value="edit">
                 <input type="hidden" name="id" id="edit_id">
-                    <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrf_token); ?>">
                 
                 <!-- B2B/B2C Toggle in top right of form -->
                 <div class="flex justify-end mb-4">
@@ -673,7 +641,6 @@ ob_start();
             <form method="POST" class="mt-4">
                 <input type="hidden" name="action" value="delete">
                 <input type="hidden" name="id" id="delete_id">
-                    <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrf_token); ?>">
                 <div class="flex justify-end space-x-3">
                     <button type="button" onclick="document.getElementById('deleteModal').classList.add('hidden')" class="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:hover:bg-gray-600">
                         Cancel
@@ -690,12 +657,9 @@ ob_start();
 <script>
 // Enhanced form submission handling
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('Packages page loaded - initializing form handlers');
-    
     // Add form validation and submission handlers
     const forms = document.querySelectorAll('form[method="POST"]');
     forms.forEach((form, index) => {
-        console.log('Setting up form handler for form', index);
         
         form.addEventListener('submit', function(e) {
             console.log('Form submission intercepted for validation');
