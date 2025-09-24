@@ -1,6 +1,12 @@
 <?php
 require_once 'config.php';
 
+// Prevent AJAX response caching
+header("Cache-Control: no-cache, no-store, must-revalidate");
+header("Pragma: no-cache");
+header("Expires: 0");
+header("Content-Type: application/json");
+
 if (isset($_GET['package_id'])) {
     $package_id = intval($_GET['package_id']);
     

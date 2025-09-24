@@ -2,6 +2,11 @@
 require_once 'config.php';
 requireLogin();
 
+// Prevent browser caching to ensure fresh data display
+header("Cache-Control: no-cache, no-store, must-revalidate");
+header("Pragma: no-cache");
+header("Expires: 0");
+
 // Handle form submissions
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Server-side validation

@@ -2,6 +2,11 @@
 require_once 'config.php';
 requireLogin();
 
+// Prevent browser caching to ensure fresh data display
+header("Cache-Control: no-cache, no-store, must-revalidate");
+header("Pragma: no-cache");
+header("Expires: 0");
+
 // Function to handle image upload
 function handleImageUpload($file, $current_image = null) {
     $upload_dir = 'imgs/';
@@ -752,8 +757,8 @@ function editPackage(package) {
     // Show the modal
     document.getElementById('editPackageModal').classList.remove('hidden');
     
-    // Fetch package items
-    fetch(`get_package_items.php?package_id=${package.id}`)
+    // Fetch package items with cache busting
+    fetch(`get_package_items.php?package_id=${package.id}&_t=${Date.now()}`)
         .then(response => response.json())
         .then(data => {
             data.forEach(item => {
@@ -764,8 +769,8 @@ function editPackage(package) {
             });
         });
 
-    // Fetch subscription prices
-    fetch(`get_subscription_prices.php?package_id=${package.id}`)
+    // Fetch subscription prices with cache busting
+    fetch(`get_subscription_prices.php?package_id=${package.id}&_t=${Date.now()}`)
         .then(response => response.json())
         .then(data => {
             data.forEach(item => {
