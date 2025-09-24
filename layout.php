@@ -76,14 +76,59 @@ require_once 'config.php';
                         <ion-icon name="shield-checkmark-outline" class="w-5 h-5 mr-3 align-middle <?php echo ($current_page == 'security_monitor.php') ? 'text-white' : 'text-gray-400 group-hover:text-gray-500 dark:text-gray-400 dark:group-hover:text-gray-300'; ?>" aria-hidden="true"></ion-icon>
                         Security Monitor
                     </a>
-                    <a href="logout.php" class="mt-1 group flex items-center px-2 py-2 text-base font-medium rounded-md text-red-600 hover:bg-red-100 hover:text-red-900 dark:text-red-400 dark:hover:bg-red-900 dark:hover:text-red-200">
-                        <ion-icon name="log-out-outline" class="w-5 h-5 mr-3 text-gray-600 group-hover:text-gray-900 dark:text-gray-300 dark:group-hover:text-gray-100 align-middle" aria-hidden="true"></ion-icon>
-                        Logout
+                    
+                    <?php if (hasRole('super_admin')): ?>
+                    <a href="users.php" class="mt-1 group flex items-center px-2 py-2 text-base font-medium rounded-md <?php echo ($current_page == 'users.php') ? 'bg-primary text-white' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-white'; ?>">
+                        <ion-icon name="people-outline" class="w-5 h-5 mr-3 align-middle <?php echo ($current_page == 'users.php') ? 'text-white' : 'text-gray-400 group-hover:text-gray-500 dark:text-gray-400 dark:group-hover:text-gray-300'; ?>" aria-hidden="true"></ion-icon>
+                        User Management
                     </a>
+                    <?php endif; ?>
+
+                    <!-- Order Status Notification -->
+                    <?php if (hasRole('admin') || hasRole('super_admin')): ?>
+                    <div class="mt-4 px-2">
+                        <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-3 border border-gray-200 dark:border-gray-600">
+                            <h4 class="text-xs font-medium text-gray-900 dark:text-white mb-2 flex items-center">
+                                <ion-icon name="notifications-outline" class="w-4 h-4 mr-2 align-middle" aria-hidden="true"></ion-icon>
+                                Order Status
+                            </h4>
+                            <div class="space-y-2 text-xs">
+                                <div class="flex items-center justify-between">
+                                    <span class="text-orange-600 dark:text-orange-400 flex items-center">
+                                        <div class="w-2 h-2 bg-orange-500 rounded-full mr-2"></div>
+                                        Pending
+                                    </span>
+                                    <span id="pendingCount" class="font-medium text-gray-900 dark:text-white">0</span>
+                                </div>
+                                <div class="flex items-center justify-between">
+                                    <span class="text-blue-600 dark:text-blue-400 flex items-center">
+                                        <div class="w-2 h-2 bg-blue-500 rounded-full mr-2"></div>
+                                        Processing
+                                    </span>
+                                    <span id="processingCount" class="font-medium text-gray-900 dark:text-white">0</span>
+                                </div>
+                            </div>
+                            <div class="mt-2 pt-2 border-t border-gray-200 dark:border-gray-500">
+                                <a href="orders.php" class="text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 flex items-center">
+                                    View All Orders
+                                    <ion-icon name="arrow-forward" class="w-3 h-3 ml-1 align-middle" aria-hidden="true"></ion-icon>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    <?php endif; ?>
+                    
+                    <!-- Logout Link - Always at bottom of navigation -->
+                    <div class="mt-6 pt-4 border-t border-gray-200 dark:border-gray-600">
+                        <a href="logout.php" class="group flex items-center px-2 py-2 text-base font-medium rounded-md text-red-600 hover:bg-red-100 hover:text-red-900 dark:text-red-400 dark:hover:bg-red-900 dark:hover:text-red-200">
+                            <ion-icon name="log-out-outline" class="w-5 h-5 mr-3 text-red-600 group-hover:text-red-900 dark:text-red-400 dark:group-hover:text-red-200 align-middle" aria-hidden="true"></ion-icon>
+                            Logout
+                        </a>
+                    </div>
                 </nav>
                 <div class="absolute bottom-0 left-0 w-full p-4 border-t dark:border-gray-700">
                     <div class="flex items-center justify-between">
-                        <h1 class="text-xl font-bold text-gray-900 dark:text-white">Admin Panel</h1>
+                        <h1 class="text-xl font-bold text-gray-900 dark:text-white">YFSuite Panel</h1>
                         <?php if (empty($force_light)): ?>
                         <button id="theme-toggle" class="p-2 rounded-lg bg-gray-200 dark:bg-gray-700">
                             <ion-icon name="sunny-outline" class="w-5 h-5 text-gray-800 dark:text-white hidden dark:block align-middle" aria-hidden="true"></ion-icon>
@@ -155,6 +200,37 @@ require_once 'config.php';
         <?php else: ?>
         // Per-page force_light is set — ensure this page stays light and do not read/write global preference
         html.classList.remove('dark');
+        <?php endif; ?>
+
+        <?php if (!isset($hide_sidebar) && (hasRole('admin') || hasRole('super_admin'))): ?>
+        // Order Status Notification System (Sidebar)
+        function fetchOrderCounts() {
+            fetch('ajax_order_counts.php')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        updateOrderCounts(data.pending, data.processing);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching order counts:', error);
+                });
+        }
+
+        function updateOrderCounts(pending, processing) {
+            const pendingElement = document.getElementById('pendingCount');
+            const processingElement = document.getElementById('processingCount');
+            
+            if (pendingElement) pendingElement.textContent = pending;
+            if (processingElement) processingElement.textContent = processing;
+        }
+
+        // Initialize and set up periodic checking
+        document.addEventListener('DOMContentLoaded', function() {
+            fetchOrderCounts();
+            // Check for updates every 30 seconds
+            setInterval(fetchOrderCounts, 30000);
+        });
         <?php endif; ?>
         </script>
 </body>

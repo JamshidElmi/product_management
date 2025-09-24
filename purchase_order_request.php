@@ -565,8 +565,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     error_log("Attempted to edit non-existent order ID: {$updating_order_id}");
                     
                     // Redirect back to orders page with error message
+                    $_SESSION['error'] = "Order ID {$updating_order_id} does not exist or has been deleted. Please check the orders list.";
                     ob_end_clean();
-                    header("Location: orders.php?error=order_not_found&id={$updating_order_id}");
+                    header("Location: orders.php");
                     exit();
                 }
                 
@@ -673,8 +674,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             
             // If updating, redirect back to orders page
             if ($updating_order_id) {
+                $_SESSION['success'] = 'Order has been updated successfully.';
                 ob_end_clean();
-                header('Location: orders.php?updated=1');
+                header('Location: orders.php');
                 exit;
             }
         } catch (Exception $e) {

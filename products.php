@@ -1,6 +1,7 @@
 <?php
 require_once 'config.php';
 requireLogin();
+requirePermission('products', 'view');
 
 // Handle form submissions
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -32,6 +33,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     switch ($_POST['action']) {
         case 'add':
+            requirePermission('products', 'create');
             // Generate item number based on product name
             $name_prefix = '';
             $name_lower = strtolower($_POST['name']);
@@ -67,6 +69,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             break;
 
         case 'edit':
+            requirePermission('products', 'edit');
             $sql = "UPDATE products SET name = ?, flavor = ?, size = ?, msrp_price = ?, web_price = ? WHERE id = ?";
             $stmt = $conn->prepare($sql);
             $stmt->bind_param("sssddi", $_POST['name'], $_POST['flavor'], $_POST['size'], $_POST['msrp_price'], $_POST['web_price'], $_POST['id']);
@@ -80,6 +83,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             break;
 
         case 'delete':
+            requirePermission('products', 'delete');
             $sql = "DELETE FROM products WHERE id = ?";
             $stmt = $conn->prepare($sql);
             $stmt->bind_param("i", $_POST['id']);

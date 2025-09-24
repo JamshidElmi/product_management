@@ -12,15 +12,15 @@ if (isLoggedIn()) {
 }
 
 $error = '';
-// Disable reCAPTCHA for local/testing. Keep variable for backwards compatibility.
-$show_recaptcha = false;
+// Enable reCAPTCHA for security
+$show_recaptcha = false; // Will be set to true after failed attempts
 // Preserve posted username for UX
 $posted_username = '';
 
 // Handle login
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $username = filter_input(INPUT_POST, 'username', FILTER_SANITIZE_STRING);
-    $password = filter_input(INPUT_POST, 'password', FILTER_SANITIZE_STRING);
+    $username = trim(filter_input(INPUT_POST, 'username', FILTER_SANITIZE_SPECIAL_CHARS) ?? '');
+    $password = $_POST['password'] ?? ''; // Don't sanitize passwords as it may change them
     // reCAPTCHA response is intentionally ignored since reCAPTCHA is disabled,
     // but define the variable to avoid undefined variable notices on some PHP configs.
     $recaptcha_response = $_POST['g-recaptcha-response'] ?? '';
@@ -33,11 +33,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $error = "Too many failed login attempts. Please try again in " . ceil($remaining_time / 60) . " minutes.";
         logSecurityEvent('login_blocked', "Login blocked for IP: $ip_address due to too many failed attempts");
     } else {
-        // NOTE: reCAPTCHA checks have been disabled. The original logic checked
-        // the number of failed attempts and conditionally required/verified
-        // reCAPTCHA via verifyRecaptcha(). That behavior is preserved here as
-        // comments so it can be re-enabled later if needed.
-        /*
         // Check if reCAPTCHA is required (after 2 failed attempts)
         $stmt = $conn->prepare("SELECT attempts FROM login_attempts WHERE ip_address = ?");
         $stmt->bind_param("s", $ip_address);
@@ -60,80 +55,50 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 recordFailedLogin($ip_address, $username);
             }
         }
-        */
-        // With reCAPTCHA disabled, treat recaptcha as valid by default
-        $recaptcha_valid = true;
         
         if ($recaptcha_valid && !empty($username) && !empty($password)) {
-            if (!$conn) {
-                die("Database connection error");
-            }
+            // Use the new authentication function
+            if (authenticateUser($username, $password)) {
+                error_log("[LOGIN DEBUG] Authentication successful");
+                // Successful login
+                clearLoginAttempts($ip_address);
+                
+                // Get user info for logging
+                $user = getCurrentUser();
+                $_SESSION['ip_address'] = $ip_address;
+                $_SESSION['login_time'] = time();
+                
+                // Additional diagnostic info: log cookies and session cookie params
+                error_log("[LOGIN DEBUG] \\$_COOKIE: " . print_r($_COOKIE, true));
+                error_log("[LOGIN DEBUG] session_id(): " . session_id());
+                error_log("[LOGIN DEBUG] session_get_cookie_params(): " . print_r(session_get_cookie_params(), true));
 
-            $sql = "SELECT * FROM users WHERE username = ?";
-            $stmt = $conn->prepare($sql);
-            if ($stmt) {
-                $stmt->bind_param("s", $username);
-                $stmt->execute();
-                $result = $stmt->get_result();
-                error_log("[LOGIN DEBUG] Query executed, rows found: " . $result->num_rows);
+                // Log server environment info for debugging
+                error_log("[LOGIN DEBUG] Server IP: " . ($_SERVER['SERVER_ADDR'] ?? 'unknown'));
+                error_log("[LOGIN DEBUG] Remote IP: " . $ip_address);
+                error_log("[LOGIN DEBUG] Session ID: " . session_id());
+                error_log("[LOGIN DEBUG] Session variables set: " . print_r($_SESSION, true));
+                
+                // Log successful login
+                logSecurityEvent('successful_login', "User $username logged in successfully", $user['id']);
+                logAdminAction('login', "Successful login from IP: $ip_address");
 
-                if ($result->num_rows === 1) {
-                    $user = $result->fetch_assoc();
-                    error_log("[LOGIN DEBUG] User found: " . $user['username'] . ", ID: " . $user['id']);
-                    if (password_verify($password, $user['password'])) {
-                        error_log("[LOGIN DEBUG] Password verified successfully");
-                        // Successful login
-                        clearLoginAttempts($ip_address);
-                        
-                        // Set session variables (don't regenerate ID to avoid session loss)
-                        $_SESSION['user_id'] = $user['id'];
-                        $_SESSION['username'] = $user['username'];
-                        $_SESSION['last_activity'] = time();
-                        $_SESSION['ip_address'] = $ip_address;
-                        $_SESSION['login_time'] = time();
-                        
-                        // Additional diagnostic info: log cookies and session cookie params
-                        error_log("[LOGIN DEBUG] \\$_COOKIE: " . print_r($_COOKIE, true));
-                        error_log("[LOGIN DEBUG] session_id(): " . session_id());
-                        error_log("[LOGIN DEBUG] session_get_cookie_params(): " . print_r(session_get_cookie_params(), true));
-
-                        // Log server environment info for debugging
-                        error_log("[LOGIN DEBUG] Server IP: " . ($_SERVER['SERVER_ADDR'] ?? 'unknown'));
-                        error_log("[LOGIN DEBUG] Remote IP: " . $ip_address);
-                        error_log("[LOGIN DEBUG] Session ID: " . session_id());
-                        error_log("[LOGIN DEBUG] Session variables set: " . print_r($_SESSION, true));
-                        
-                        // Log successful login
-                        logSecurityEvent('successful_login', "User $username logged in successfully", $user['id']);
-                        logAdminAction('login', "Successful login from IP: $ip_address");
-
-                        // Diagnostic logging to help troubleshoot session/cookie issues
-                        error_log("[LOGIN DEBUG] Session after login: " . print_r($_SESSION, true));
-                        // Log headers that will be sent (for debugging only)
-                        if (function_exists('headers_sent')) {
-                            ob_start();
-                            foreach (headers_list() as $h) {
-                                error_log("[LOGIN DEBUG] Pending header: " . $h);
-                            }
-                            ob_end_clean();
-                        }
-
-                        error_log("[LOGIN DEBUG] Redirecting to index.php");
-                        header("Location: index.php");
-                        exit();
-                    } else {
-                        error_log("[LOGIN DEBUG] Password verification failed");
+                // Diagnostic logging to help troubleshoot session/cookie issues
+                error_log("[LOGIN DEBUG] Session after login: " . print_r($_SESSION, true));
+                // Log headers that will be sent (for debugging only)
+                if (function_exists('headers_sent')) {
+                    ob_start();
+                    foreach (headers_list() as $h) {
+                        error_log("[LOGIN DEBUG] Pending header: " . $h);
                     }
-                } else {
-                    error_log("[LOGIN DEBUG] User not found in database");
+                    ob_end_clean();
                 }
-                $stmt->close();
+
+                error_log("[LOGIN DEBUG] Redirecting to index.php");
+                header("Location: index.php");
+                exit();
             } else {
-                error_log("[LOGIN DEBUG] Failed to prepare SQL statement: " . $conn->error);
-                $error = "Failed to prepare the SQL statement";
-            }
-            
-            if (empty($error)) {
+                error_log("[LOGIN DEBUG] Authentication failed");
                 $error = "Invalid username or password";
                 recordFailedLogin($ip_address, $username);
                 error_log("[LOGIN DEBUG] Login failed, recording failed attempt");
@@ -212,13 +177,12 @@ ob_start();
                 </div>
             </div>
 
-            <!-- reCAPTCHA (disabled) -->
-            <?php /*
-            if ($show_recaptcha): ?>
+            <!-- reCAPTCHA -->
+            <?php if ($show_recaptcha): ?>
             <div class="flex justify-center mb-4">
                 <div class="g-recaptcha" data-sitekey="<?php echo RECAPTCHA_SITE_KEY; ?>"></div>
             </div>
-            <?php endif; */ ?>
+            <?php endif; ?>
 
             <div>
                 <button type="submit" 
@@ -241,18 +205,17 @@ ob_start();
     </div>
 </div>
 
-<!-- reCAPTCHA Script (disabled) -->
-<?php /* <script src="https://www.google.com/recaptcha/api.js" async defer></script> */ ?>
+<!-- reCAPTCHA Script -->
+<script src="https://www.google.com/recaptcha/api.js" async defer></script>
 
 <script>
 // Show/hide reCAPTCHA based on failed attempts
-// reCAPTCHA client-side logic disabled.
-// document.addEventListener('DOMContentLoaded', function() {
-//     <?php if ($show_recaptcha): ?>
-//     var rc = document.querySelector('.g-recaptcha');
-//     if (rc) rc.style.display = 'block';
-//     <?php endif; ?>
-// });
+document.addEventListener('DOMContentLoaded', function() {
+    <?php if ($show_recaptcha): ?>
+    var rc = document.querySelector('.g-recaptcha');
+    if (rc) rc.style.display = 'block';
+    <?php endif; ?>
+});
 </script>
 
 <script>

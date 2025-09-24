@@ -1,6 +1,7 @@
 <?php
 require_once 'config.php';
 requireLogin();
+requirePermission('orders', 'view');
 
 // Get filter parameters
 $date_from = $_GET['date_from'] ?? '';
@@ -96,6 +97,7 @@ function buildPaginationUrl($pageNum) {
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     
     if ($_POST['action'] === 'update_status' && isset($_POST['order_id'], $_POST['status'])) {
+        requirePermission('orders', 'edit');
         $order_id = (int)$_POST['order_id'];
         $status = $_POST['status'];
         
@@ -112,15 +114,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             if ($stmt->execute()) {
                 $stmt->close();
                 logAdminAction('update_order_status', "Updated order $order_id status to $status", $order_id);
-                header('Location: orders.php?updated=1');
+                $_SESSION['success'] = 'Order status has been updated successfully.';
+                header('Location: orders.php');
                 exit;
             } else {
                 $stmt->close();
-                header('Location: orders.php?error=1');
+                $_SESSION['error'] = 'Failed to update order status.';
+                header('Location: orders.php');
                 exit;
             }
         }
     } elseif ($_POST['action'] === 'delete_order' && isset($_POST['order_id'])) {
+        requirePermission('orders', 'delete');
         $order_id = (int)$_POST['order_id'];
         
         $conn->begin_transaction();
@@ -139,11 +144,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             
             $conn->commit();
             logAdminAction('delete_order', "Deleted order $order_id", $order_id);
-            header('Location: orders.php?deleted=1');
+            $_SESSION['success'] = 'Order has been deleted successfully.';
+            header('Location: orders.php');
             exit;
         } catch (Exception $e) {
             $conn->rollback();
-            header('Location: orders.php?delete_error=1');
+            $_SESSION['error'] = 'Failed to delete order. Please try again.';
+            header('Location: orders.php');
             exit;
         }
     }
@@ -152,34 +159,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 ob_start();
 ?>
 <div class="space-y-6">
-    <!-- Error Messages -->
-    <?php if (isset($_GET['error'])): ?>
-        <div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded relative" role="alert">
-            <?php if ($_GET['error'] === 'order_not_found'): ?>
-                <strong class="font-bold">Order Not Found!</strong>
-                <span class="block sm:inline">Order ID <?php echo htmlspecialchars($_GET['id'] ?? 'unknown'); ?> does not exist or has been deleted. Please check the orders list below.</span>
-            <?php else: ?>
-                <strong class="font-bold">Error!</strong>
-                <span class="block sm:inline">An error occurred while processing your request.</span>
-            <?php endif; ?>
-        </div>
-    <?php endif; ?>
-    
-    <!-- Success Messages -->
-    <?php if (isset($_GET['updated'])): ?>
-        <div class="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded relative" role="alert">
-            <strong class="font-bold">Success!</strong>
-            <span class="block sm:inline">Order status has been updated successfully.</span>
-        </div>
-    <?php endif; ?>
-    
-    <?php if (isset($_GET['deleted'])): ?>
-        <div class="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded relative" role="alert">
-            <strong class="font-bold">Success!</strong>
-            <span class="block sm:inline">Order has been deleted successfully.</span>
-        </div>
-    <?php endif; ?>
-
     <!-- Header -->
     <div class="flex justify-between items-center">
         <h1 class="text-2xl font-semibold text-gray-900 dark:text-white">Orders Management</h1>
@@ -190,10 +169,12 @@ ob_start();
             
             <!-- Admin Controls -->
             <div class="flex items-center space-x-3">
+                <?php if (hasPermission('orders', 'create')): ?>
                 <a href="purchase_order_request.php" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-primary hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary">
                     <ion-icon name="add-circle-outline" class="w-4 h-4 align-middle" aria-hidden="true"></ion-icon>
                     <span>Add New Order</span>
                 </a>
+                <?php endif; ?>
             </div>
         </div>
     </div>
@@ -338,21 +319,27 @@ ob_start();
                                 <?php echo date('M j, Y g:i A', strtotime($order['created_at'])); ?>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
+                                <?php if (hasPermission('orders', 'edit')): ?>
                                 <a href="purchase_order_request.php?edit=<?php echo $order['id']; ?>" 
                                    class="inline-flex items-center px-3 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 transition-colors">
                                     <ion-icon name="create-outline" class="w-3 h-3 mr-1 align-middle" aria-hidden="true"></ion-icon>
                                     Edit
                                 </a>
+                                <?php endif; ?>
+                                
                                 <a href="print_order.php?id=<?php echo $order['id']; ?>" target="_blank"
                                    class="inline-flex items-center px-3 py-1 bg-green-600 text-white text-xs rounded hover:bg-green-700 transition-colors">
                                     <ion-icon name="print-outline" class="w-3 h-3 mr-1 align-middle" aria-hidden="true"></ion-icon>
                                     Print
                                 </a>
+                                
+                                <?php if (hasPermission('orders', 'delete')): ?>
                                 <button onclick="confirmDelete(<?php echo $order['id']; ?>, '<?php echo htmlspecialchars($order['order_reference'], ENT_QUOTES); ?>')" 
                                         class="inline-flex items-center px-3 py-1 bg-red-600 text-white text-xs rounded hover:bg-red-700 transition-colors">
                                     <ion-icon name="trash-outline" class="w-3 h-3 mr-1 align-middle" aria-hidden="true"></ion-icon>
                                     Delete
                                 </button>
+                                <?php endif; ?>
                             </td>
                         </tr>
                     <?php endwhile; ?>

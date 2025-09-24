@@ -1,3 +1,6 @@
+# Environment variables - contains sensitive data
+.env
+
 # Node / JS (if ever used)
 node_modules/
 npm-debug.log*

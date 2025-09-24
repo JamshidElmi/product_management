@@ -62,25 +62,71 @@ if (session_status() === PHP_SESSION_NONE) {
     }
 }
 
-// ===== DATABASE AND APP CONFIGURATION =====
-define('DB_HOST', 'localhost');
-define('DB_USER', 'u5thlbnw7t4i_manaGer_useR_produCt');
-define('DB_PASS', '1&H^2xpWyqCAJvm$');
-define('DB_NAME', 'u5thlbnw7t4i_product_manager');
+// ===== LOAD ENVIRONMENT VARIABLES =====
+/**
+ * Simple .env file loader
+ * Loads environment variables from .env file if it exists
+ */
+function loadEnv($path = __DIR__ . '/.env') {
+    if (!file_exists($path)) {
+        throw new Exception('.env file not found at: ' . $path);
+    }
+    
+    $lines = file($path, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+    foreach ($lines as $line) {
+        // Skip comments
+        if (strpos(trim($line), '#') === 0) {
+            continue;
+        }
+        
+        // Parse key=value pairs
+        if (strpos($line, '=') !== false) {
+            list($key, $value) = explode('=', $line, 2);
+            $key = trim($key);
+            $value = trim($value);
+            
+            // Remove quotes if present
+            if ((substr($value, 0, 1) === '"' && substr($value, -1) === '"') ||
+                (substr($value, 0, 1) === "'" && substr($value, -1) === "'")) {
+                $value = substr($value, 1, -1);
+            }
+            
+            // Set as environment variable and define constant
+            $_ENV[$key] = $value;
+            putenv("$key=$value");
+            
+            // Define constants for backward compatibility
+            if (!defined($key)) {
+                define($key, $value);
+            }
+        }
+    }
+}
 
-// reCAPTCHA Configuration
-define('RECAPTCHA_SITE_KEY', '6LfSuNIrAAAAAL_yqGHflka0opcbMSTwJWxV6dFg');
-define('RECAPTCHA_SECRET_KEY', '6LfSuNIrAAAAAHRxpHKoOsSstPqAdOvyqQjLNzef');
-
-// Security Configuration
-define('MAX_LOGIN_ATTEMPTS', 5);
-define('LOCKOUT_TIME', 900); // 15 minutes in seconds
-define('SESSION_TIMEOUT', 3600); // 1 hour in seconds
-define('ENABLE_IP_VALIDATION', true);
-
-// Force host-only cookies for server compatibility
-// This ensures cookies work properly on production servers
-define('SESSION_COOKIE_FORCE_HOST_ONLY', true);
+// Load environment variables
+try {
+    loadEnv();
+} catch (Exception $e) {
+    // Fallback to hardcoded values if .env file is missing (for backward compatibility)
+    error_log("Warning: Could not load .env file - " . $e->getMessage());
+    
+    // Fallback database configuration
+    if (!defined('DB_HOST')) define('DB_HOST', 'localhost');
+    if (!defined('DB_USER')) define('DB_USER', 'u5thlbnw7t4i_manaGer_useR_produCt');
+    if (!defined('DB_PASS')) define('DB_PASS', '1&H^2xpWyqCAJvm$');
+    if (!defined('DB_NAME')) define('DB_NAME', 'u5thlbnw7t4i_product_manager');
+    
+    // Fallback reCAPTCHA Configuration
+    if (!defined('RECAPTCHA_SITE_KEY')) define('RECAPTCHA_SITE_KEY', '6LfSuNIrAAAAAL_yqGHflka0opcbMSTwJWxV6dFg');
+    if (!defined('RECAPTCHA_SECRET_KEY')) define('RECAPTCHA_SECRET_KEY', '6LfSuNIrAAAAAHRxpHKoOsSstPqAdOvyqQjLNzef');
+    
+    // Fallback Security Configuration
+    if (!defined('MAX_LOGIN_ATTEMPTS')) define('MAX_LOGIN_ATTEMPTS', 5);
+    if (!defined('LOCKOUT_TIME')) define('LOCKOUT_TIME', 900);
+    if (!defined('SESSION_TIMEOUT')) define('SESSION_TIMEOUT', 3600);
+    if (!defined('ENABLE_IP_VALIDATION')) define('ENABLE_IP_VALIDATION', true);
+    if (!defined('SESSION_COOKIE_FORCE_HOST_ONLY')) define('SESSION_COOKIE_FORCE_HOST_ONLY', true);
+}
 
 // TEMP: enable verbose error reporting for debugging on local; in production we log to file or syslog
 $is_local = $is_local ?? (preg_match('/^(localhost|127\.|::1)/', $_SERVER['HTTP_HOST'] ?? '') ? true : false);
@@ -393,4 +439,213 @@ function logAdminAction($action, $details = '', $affected_id = null) {
     $stmt->bind_param("issis", $user_id, $action, $details, $affected_id, $ip_address);
     $stmt->execute();
 }
+
+// ===================== NEW USER MANAGEMENT SYSTEM =====================
+
+// Function to get current user data
+function getCurrentUser() {
+    global $conn;
+    
+    if (!isset($_SESSION['user_id'])) {
+        return null;
+    }
+    
+    $stmt = $conn->prepare("SELECT id, username, email, role, status, last_login FROM users WHERE id = ? AND status = 'active'");
+    $stmt->bind_param('i', $_SESSION['user_id']);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $user = $result->fetch_assoc();
+    $stmt->close();
+    
+    return $user;
+}
+
+// Function to check if user has a specific role
+function hasRole($required_role) {
+    $user = getCurrentUser();
+    if (!$user) return false;
+    
+    $roles = ['user' => 1, 'admin' => 2, 'super_admin' => 3];
+    $user_level = $roles[$user['role']] ?? 0;
+    $required_level = $roles[$required_role] ?? 0;
+    
+    return $user_level >= $required_level;
+}
+
+// Function to check module permissions
+function hasPermission($module, $action = 'view') {
+    global $conn;
+    
+    $user = getCurrentUser();
+    if (!$user) return false;
+    
+    // Super admin has all permissions
+    if ($user['role'] === 'super_admin') return true;
+    
+    $column = '';
+    switch($action) {
+        case 'view': $column = 'can_view'; break;
+        case 'create': $column = 'can_create'; break;
+        case 'edit': $column = 'can_edit'; break;
+        case 'delete': $column = 'can_delete'; break;
+        default: return false;
+    }
+    
+    $stmt = $conn->prepare("SELECT $column FROM user_permissions WHERE user_id = ? AND module = ?");
+    $stmt->bind_param('is', $user['id'], $module);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $permission = $result->fetch_assoc();
+    $stmt->close();
+    
+    return $permission ? (bool)$permission[$column] : false;
+}
+
+// Function to require specific role
+function requireRole($required_role) {
+    if (!hasRole($required_role)) {
+        $_SESSION['error'] = "Access denied. You need $required_role privileges to access this page.";
+        header("Location: login.php");
+        exit();
+    }
+}
+
+// Function to require specific permission
+function requirePermission($module, $action = 'view') {
+    if (!hasPermission($module, $action)) {
+        $_SESSION['error'] = "Access denied. You don't have permission to $action $module.";
+        header("Location: index.php");
+        exit();
+    }
+}
+
+// Function to get user's modules and permissions
+function getUserModules($user_id = null) {
+    global $conn;
+    
+    if (!$user_id) {
+        $user = getCurrentUser();
+        if (!$user) return [];
+        $user_id = $user['id'];
+    }
+    
+    // Super admin gets all modules
+    $user_data = getCurrentUser();
+    if ($user_data && $user_data['role'] === 'super_admin') {
+        $stmt = $conn->prepare("SELECT module_key as module, module_name, 1 as can_view, 1 as can_create, 1 as can_edit, 1 as can_delete FROM system_modules WHERE is_active = 1 ORDER BY sort_order");
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $modules = [];
+        while ($row = $result->fetch_assoc()) {
+            $modules[] = $row;
+        }
+        $stmt->close();
+        return $modules;
+    }
+    
+    // Regular users get only their assigned permissions
+    $stmt = $conn->prepare("
+        SELECT sm.module_key as module, sm.module_name, 
+               COALESCE(up.can_view, 0) as can_view,
+               COALESCE(up.can_create, 0) as can_create, 
+               COALESCE(up.can_edit, 0) as can_edit,
+               COALESCE(up.can_delete, 0) as can_delete
+        FROM system_modules sm 
+        LEFT JOIN user_permissions up ON sm.module_key = up.module AND up.user_id = ?
+        WHERE sm.is_active = 1 
+        ORDER BY sm.sort_order
+    ");
+    $stmt->bind_param('i', $user_id);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $modules = [];
+    while ($row = $result->fetch_assoc()) {
+        $modules[] = $row;
+    }
+    $stmt->close();
+    
+    return $modules;
+}
+
+// Function to authenticate user with new system
+function authenticateUser($username, $password) {
+    global $conn;
+    
+    $stmt = $conn->prepare("SELECT id, username, password, role, status FROM users WHERE (username = ? OR email = ?) AND status = 'active'");
+    $stmt->bind_param('ss', $username, $username);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $user = $result->fetch_assoc();
+    $stmt->close();
+    
+    if ($user && password_verify($password, $user['password'])) {
+        // Update last login
+        $updateStmt = $conn->prepare("UPDATE users SET last_login = NOW() WHERE id = ?");
+        $updateStmt->bind_param('i', $user['id']);
+        $updateStmt->execute();
+        $updateStmt->close();
+        
+        // Set session variables
+        $_SESSION['user_id'] = $user['id'];
+        $_SESSION['username'] = $user['username'];
+        $_SESSION['role'] = $user['role'];
+        $_SESSION['last_activity'] = time();
+        
+        return true;
+    }
+    
+    return false;
+}
+
+// Function to create new user (super admin only)
+function createUser($username, $email, $password, $role = 'user') {
+    global $conn;
+    
+    if (!hasRole('super_admin')) {
+        return false;
+    }
+    
+    $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
+    $created_by = getCurrentUser()['id'];
+    
+    $stmt = $conn->prepare("INSERT INTO users (username, email, password, role, created_by) VALUES (?, ?, ?, ?, ?)");
+    $stmt->bind_param('ssssi', $username, $email, $hashedPassword, $role, $created_by);
+    $success = $stmt->execute();
+    $new_user_id = $conn->insert_id;
+    $stmt->close();
+    
+    return $success ? $new_user_id : false;
+}
+
+// Function to set user permissions
+function setUserPermissions($user_id, $module, $permissions) {
+    global $conn;
+    
+    if (!hasRole('super_admin')) {
+        return false;
+    }
+    
+    $stmt = $conn->prepare("INSERT INTO user_permissions (user_id, module, can_view, can_create, can_edit, can_delete) 
+                           VALUES (?, ?, ?, ?, ?, ?) 
+                           ON DUPLICATE KEY UPDATE 
+                           can_view = VALUES(can_view),
+                           can_create = VALUES(can_create), 
+                           can_edit = VALUES(can_edit),
+                           can_delete = VALUES(can_delete)");
+    
+    $stmt->bind_param('isiiii', 
+        $user_id, 
+        $module,
+        $permissions['view'] ? 1 : 0,
+        $permissions['create'] ? 1 : 0,
+        $permissions['edit'] ? 1 : 0,
+        $permissions['delete'] ? 1 : 0
+    );
+    
+    $success = $stmt->execute();
+    $stmt->close();
+    
+    return $success;
+}
+
 ?>
