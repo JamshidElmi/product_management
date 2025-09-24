@@ -106,6 +106,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $_SESSION['ip_address'] = $ip_address;
                         $_SESSION['login_time'] = time();
                         
+                        // Additional diagnostic info: log cookies and session cookie params
+                        error_log("[LOGIN DEBUG] \\$_COOKIE: " . print_r($_COOKIE, true));
+                        error_log("[LOGIN DEBUG] session_id(): " . session_id());
+                        error_log("[LOGIN DEBUG] session_get_cookie_params(): " . print_r(session_get_cookie_params(), true));
+
                         // Log server environment info for debugging
                         error_log("[LOGIN DEBUG] Server IP: " . ($_SERVER['SERVER_ADDR'] ?? 'unknown'));
                         error_log("[LOGIN DEBUG] Remote IP: " . $ip_address);
