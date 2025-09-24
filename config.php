@@ -2,14 +2,24 @@
 // ===== SESSION CONFIGURATION FIRST =====
 // This MUST be set before any other code that might start a session
 if (session_status() === PHP_SESSION_NONE) {
-    // Secure session settings for HTTPS hosting
+    // Secure session settings. Adjust automatically for local (HTTP) vs production (HTTPS).
+    $host = $_SERVER['HTTP_HOST'] ?? '';
+    $remote = $_SERVER['REMOTE_ADDR'] ?? '';
+    $is_local = preg_match('/^(localhost|127\.|::1)/', $host) || in_array($remote, ['127.0.0.1', '::1']);
+
+    // Detect if connection is secure
+    $is_https = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || (isset($_SERVER['SERVER_PORT']) && $_SERVER['SERVER_PORT'] == 443);
+
     ini_set('session.cookie_httponly', 1);
-    ini_set('session.cookie_secure', 1); // Enable for HTTPS
+    // Only require secure cookies when running under HTTPS
+    ini_set('session.cookie_secure', $is_https ? 1 : 0);
     ini_set('session.use_strict_mode', 1);
-    ini_set('session.cookie_samesite', 'Lax');
+    // Use 'None' when secure with cross-site contexts, otherwise 'Lax' for local testing
+    ini_set('session.cookie_samesite', $is_https ? 'None' : 'Lax');
     ini_set('session.cookie_lifetime', 0);
     ini_set('session.cookie_path', '/');
-    ini_set('session.cookie_domain', 'yfsuite.lubricityinnovations.com');
+    // Only set a specific cookie domain for production hosts; leave empty for localhost
+    ini_set('session.cookie_domain', $is_local ? '' : 'yfsuite.lubricityinnovations.com');
     
     // Set consistent session name across ALL pages
     session_name('PRODUCT_MGMT_SESSION');

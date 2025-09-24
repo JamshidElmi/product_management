@@ -19,6 +19,7 @@ if (isLoggedIn()) {
 }
 
 $error = '';
+// Disable reCAPTCHA for local/testing. Keep variable for backwards compatibility.
 $show_recaptcha = false;
 // Preserve posted username for UX
 $posted_username = '';
@@ -29,7 +30,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     error_log("[LOGIN DEBUG] Session before processing: " . print_r($_SESSION, true));
     $username = filter_input(INPUT_POST, 'username', FILTER_SANITIZE_STRING);
     $password = filter_input(INPUT_POST, 'password', FILTER_SANITIZE_STRING);
-    $recaptcha_response = $_POST['g-recaptcha-response'] ?? '';
+    // reCAPTCHA response is intentionally ignored since reCAPTCHA is disabled.
+    // $recaptcha_response = $_POST['g-recaptcha-response'] ?? '';
     $ip_address = $_SERVER['REMOTE_ADDR'];
     $posted_username = $username ?? '';
     
@@ -41,6 +43,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $error = "Too many failed login attempts. Please try again in " . ceil($remaining_time / 60) . " minutes.";
         logSecurityEvent('login_blocked', "Login blocked for IP: $ip_address due to too many failed attempts");
     } else {
+        // NOTE: reCAPTCHA checks have been disabled. The original logic checked
+        // the number of failed attempts and conditionally required/verified
+        // reCAPTCHA via verifyRecaptcha(). That behavior is preserved here as
+        // comments so it can be re-enabled later if needed.
+        /*
         // Check if reCAPTCHA is required (after 2 failed attempts)
         $stmt = $conn->prepare("SELECT attempts FROM login_attempts WHERE ip_address = ?");
         $stmt->bind_param("s", $ip_address);
@@ -63,6 +70,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 recordFailedLogin($ip_address, $username);
             }
         }
+        */
+        // With reCAPTCHA disabled, treat recaptcha as valid by default
+        $recaptcha_valid = true;
         
         if ($recaptcha_valid && !empty($username) && !empty($password)) {
             error_log("[LOGIN DEBUG] Validation passed, attempting database query");
@@ -199,12 +209,13 @@ ob_start();
                 </div>
             </div>
 
-            <!-- reCAPTCHA -->
-            <?php if ($show_recaptcha): ?>
+            <!-- reCAPTCHA (disabled) -->
+            <?php /*
+            if ($show_recaptcha): ?>
             <div class="flex justify-center mb-4">
                 <div class="g-recaptcha" data-sitekey="<?php echo RECAPTCHA_SITE_KEY; ?>"></div>
             </div>
-            <?php endif; ?>
+            <?php endif; */ ?>
 
             <div>
                 <button type="submit" 
@@ -227,17 +238,18 @@ ob_start();
     </div>
 </div>
 
-<!-- reCAPTCHA Script -->
-<script src="https://www.google.com/recaptcha/api.js" async defer></script>
+<!-- reCAPTCHA Script (disabled) -->
+<?php /* <script src="https://www.google.com/recaptcha/api.js" async defer></script> */ ?>
 
 <script>
 // Show/hide reCAPTCHA based on failed attempts
-document.addEventListener('DOMContentLoaded', function() {
-    <?php if ($show_recaptcha): ?>
-    var rc = document.querySelector('.g-recaptcha');
-    if (rc) rc.style.display = 'block';
-    <?php endif; ?>
-});
+// reCAPTCHA client-side logic disabled.
+// document.addEventListener('DOMContentLoaded', function() {
+//     <?php if ($show_recaptcha): ?>
+//     var rc = document.querySelector('.g-recaptcha');
+//     if (rc) rc.style.display = 'block';
+//     <?php endif; ?>
+// });
 </script>
 
 <script>
