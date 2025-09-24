@@ -29,13 +29,20 @@ if (session_status() === PHP_SESSION_NONE) {
     ini_set('session.cookie_path', '/');
     // Compute cookie domain dynamically from the request host (strip port if present).
     // Leave blank for local to allow browser to accept cookies on localhost.
-    $cookie_domain = '';
-    if (!$is_local && !empty($_SERVER['HTTP_HOST'])) {
-        // Remove port if present
-        $hostOnly = preg_replace('/:\d+$/', '', $_SERVER['HTTP_HOST']);
-        // For a host like 'yfsuite.lubricityinnovations.com' use it directly
-        $cookie_domain = $hostOnly;
-    }
+        $cookie_domain = '';
+        if (defined('SESSION_COOKIE_FORCE_HOST_ONLY') && SESSION_COOKIE_FORCE_HOST_ONLY === true) {
+            // Host-only: leave cookie domain blank so browser treats cookie as host-only
+            $cookie_domain = '';
+            error_log("[SESSION DEBUG] SESSION_COOKIE_FORCE_HOST_ONLY is enabled — using host-only cookie (no Domain attribute)");
+        } else {
+            // Leave blank for local to allow browser to accept cookies on localhost.
+            if (!$is_local && !empty($_SERVER['HTTP_HOST'])) {
+                // Remove port if present
+                $hostOnly = preg_replace('/:\d+$/', '', $_SERVER['HTTP_HOST']);
+                // For a host like 'yfsuite.lubricityinnovations.com' use it directly
+                $cookie_domain = $hostOnly;
+            }
+        }
     ini_set('session.cookie_domain', $cookie_domain);
     error_log("[SESSION DEBUG] Computed cookie settings - domain: " . ini_get('session.cookie_domain') . ", secure: " . ($is_https ? '1' : '0') . ", samesite: " . ini_get('session.cookie_samesite'));
     
@@ -74,6 +81,10 @@ define('LOCKOUT_TIME', 900); // 15 minutes in seconds
 define('SESSION_TIMEOUT', 3600); // 1 hour in seconds
 define('ENABLE_IP_VALIDATION', true);
 define('ENABLE_CSRF_PROTECTION', true);
+
+// Quick testing toggle: when true the session cookie will be host-only (no Domain attribute).
+// Set to true temporarily if browser is not returning the cookie after login to test domain issues.
+define('SESSION_COOKIE_FORCE_HOST_ONLY', false);
 
 // TEMP: enable verbose error reporting for debugging on local; in production we log to file or syslog
 $is_local = $is_local ?? (preg_match('/^(localhost|127\.|::1)/', $_SERVER['HTTP_HOST'] ?? '') ? true : false);
