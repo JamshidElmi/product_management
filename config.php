@@ -85,6 +85,17 @@ if (is_dir($logsDir) && is_writable($logsDir)) {
     ini_set('error_log', 'syslog');
 }
 
+// Diagnostic: record where PHP is sending error logs and attempt a small write test
+error_log("[LOGGING DEBUG] error_log target: " . ini_get('error_log'));
+$testFile = $logsDir . '/.write_test';
+$writeOk = @file_put_contents($testFile, "write-test " . date('c')) !== false;
+if ($writeOk) {
+    error_log("[LOGGING DEBUG] Successfully wrote test file to: $testFile");
+    @unlink($testFile);
+} else {
+    error_log("[LOGGING DEBUG] Failed to write test file to: $testFile (logs dir maybe not writable)");
+}
+
 // Create database connection
 $conn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
 
