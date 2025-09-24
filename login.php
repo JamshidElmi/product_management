@@ -30,12 +30,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     error_log("[LOGIN DEBUG] Session before processing: " . print_r($_SESSION, true));
     $username = filter_input(INPUT_POST, 'username', FILTER_SANITIZE_STRING);
     $password = filter_input(INPUT_POST, 'password', FILTER_SANITIZE_STRING);
-    // reCAPTCHA response is intentionally ignored since reCAPTCHA is disabled.
-    // $recaptcha_response = $_POST['g-recaptcha-response'] ?? '';
+    // reCAPTCHA response is intentionally ignored since reCAPTCHA is disabled,
+    // but define the variable to avoid undefined variable notices on some PHP configs.
+    $recaptcha_response = $_POST['g-recaptcha-response'] ?? '';
     $ip_address = $_SERVER['REMOTE_ADDR'];
     $posted_username = $username ?? '';
     
-    error_log("[LOGIN DEBUG] Username: '$username', Password length: " . strlen($password ?? '') . ", Recaptcha length: " . strlen($recaptcha_response));
+    error_log("[LOGIN DEBUG] Username: '$username', Password length: " . strlen($password ?? '') . ", Recaptcha length: " . strlen($recaptcha_response ?? ''));
     
     // Check if IP is locked out
     if (!checkLoginAttempts($ip_address)) {
