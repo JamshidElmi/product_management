@@ -7,8 +7,17 @@ if (session_status() === PHP_SESSION_NONE) {
     $remote = $_SERVER['REMOTE_ADDR'] ?? '';
     $is_local = preg_match('/^(localhost|127\.|::1)/', $host) || in_array($remote, ['127.0.0.1', '::1']);
 
-    // Detect if connection is secure
-    $is_https = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || (isset($_SERVER['SERVER_PORT']) && $_SERVER['SERVER_PORT'] == 443);
+    // Detect if connection is secure. Also honor common proxy headers (X-Forwarded-Proto, X-Forwarded-Ssl)
+    $is_https = false;
+    if ((!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || (isset($_SERVER['SERVER_PORT']) && $_SERVER['SERVER_PORT'] == 443)) {
+        $is_https = true;
+    }
+    // Some hosts terminate TLS at a load balancer or proxy and set these headers
+    $xfp = strtolower($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '');
+    $xfs = strtolower($_SERVER['HTTP_X_FORWARDED_SSL'] ?? '');
+    if ($xfp === 'https' || $xfs === 'on' || (!empty($_SERVER['HTTP_CF_VISITOR']) && strpos($_SERVER['HTTP_CF_VISITOR'], '"scheme":"https"') !== false)) {
+        $is_https = true;
+    }
 
     ini_set('session.cookie_httponly', 1);
     // Only require secure cookies when running under HTTPS
@@ -18,8 +27,17 @@ if (session_status() === PHP_SESSION_NONE) {
     ini_set('session.cookie_samesite', $is_https ? 'None' : 'Lax');
     ini_set('session.cookie_lifetime', 0);
     ini_set('session.cookie_path', '/');
-    // Only set a specific cookie domain for production hosts; leave empty for localhost
-    ini_set('session.cookie_domain', $is_local ? '' : 'yfsuite.lubricityinnovations.com');
+    // Compute cookie domain dynamically from the request host (strip port if present).
+    // Leave blank for local to allow browser to accept cookies on localhost.
+    $cookie_domain = '';
+    if (!$is_local && !empty($_SERVER['HTTP_HOST'])) {
+        // Remove port if present
+        $hostOnly = preg_replace('/:\d+$/', '', $_SERVER['HTTP_HOST']);
+        // For a host like 'yfsuite.lubricityinnovations.com' use it directly
+        $cookie_domain = $hostOnly;
+    }
+    ini_set('session.cookie_domain', $cookie_domain);
+    error_log("[SESSION DEBUG] Computed cookie settings - domain: " . ini_get('session.cookie_domain') . ", secure: " . ($is_https ? '1' : '0') . ", samesite: " . ini_get('session.cookie_samesite'));
     
     // Set consistent session name across ALL pages
     session_name('PRODUCT_MGMT_SESSION');
