@@ -625,6 +625,12 @@ function setUserPermissions($user_id, $module, $permissions) {
         return false;
     }
     
+    // Convert permissions to integers and store in variables (required for bind_param by reference)
+    $can_view = $permissions['view'] ? 1 : 0;
+    $can_create = $permissions['create'] ? 1 : 0;
+    $can_edit = $permissions['edit'] ? 1 : 0;
+    $can_delete = $permissions['delete'] ? 1 : 0;
+    
     $stmt = $conn->prepare("INSERT INTO user_permissions (user_id, module, can_view, can_create, can_edit, can_delete) 
                            VALUES (?, ?, ?, ?, ?, ?) 
                            ON DUPLICATE KEY UPDATE 
@@ -636,10 +642,10 @@ function setUserPermissions($user_id, $module, $permissions) {
     $stmt->bind_param('isiiii', 
         $user_id, 
         $module,
-        $permissions['view'] ? 1 : 0,
-        $permissions['create'] ? 1 : 0,
-        $permissions['edit'] ? 1 : 0,
-        $permissions['delete'] ? 1 : 0
+        $can_view,
+        $can_create,
+        $can_edit,
+        $can_delete
     );
     
     $success = $stmt->execute();
