@@ -84,7 +84,7 @@ define('ENABLE_CSRF_PROTECTION', true);
 
 // Quick testing toggle: when true the session cookie will be host-only (no Domain attribute).
 // Set to true temporarily if browser is not returning the cookie after login to test domain issues.
-define('SESSION_COOKIE_FORCE_HOST_ONLY', false);
+define('SESSION_COOKIE_FORCE_HOST_ONLY', true);
 
 // TEMP: enable verbose error reporting for debugging on local; in production we log to file or syslog
 $is_local = $is_local ?? (preg_match('/^(localhost|127\.|::1)/', $_SERVER['HTTP_HOST'] ?? '') ? true : false);
