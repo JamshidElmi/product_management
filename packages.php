@@ -288,6 +288,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
             break;
     }
+    
+    // Debug: Log before redirect
+    error_log("Packages.php: About to redirect after action: " . $_POST['action'] . ", Success message: " . (isset($_SESSION['success']) ? $_SESSION['success'] : 'None'));
+    
     header("Location: packages.php");
     exit();
 }
@@ -298,9 +302,14 @@ $packages = $conn->query("
     FROM packages p
     LEFT JOIN package_items pi ON p.id = pi.package_id
     LEFT JOIN products pr ON pi.product_id = pr.id
-    GROUP BY p.id, p.b2b
+    GROUP BY p.id
     ORDER BY p.name
 ");
+
+// Debug: check if packages query is working
+if (!$packages) {
+    error_log("Packages query failed: " . $conn->error);
+}
 
 // Get all products for the add/edit forms
 $products = $conn->query("SELECT * FROM products ORDER BY name, size");
@@ -343,8 +352,20 @@ ob_start();
             </thead>
             <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                 <?php 
-                $packages->data_seek(0);
-                while ($package = $packages->fetch_assoc()): ?>
+                // Debug: Show package count
+                $total_packages = $packages ? $packages->num_rows : 0;
+                if ($total_packages == 0) {
+                    // Show debug info for empty results
+                    echo '<tr><td colspan="10" class="px-6 py-4 text-center text-red-500">';
+                    echo 'No packages found. ';
+                    $count_check = $conn->query("SELECT COUNT(*) as count FROM packages");
+                    $count = $count_check->fetch_assoc()['count'];
+                    echo "Total in DB: $count packages. ";
+                    echo 'Check packages_diagnostic.php for more info.';
+                    echo '</td></tr>';
+                } else {
+                    $packages->data_seek(0);
+                    while ($package = $packages->fetch_assoc()): ?>
                 <tr>
                      <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
                         <?php 
@@ -422,7 +443,10 @@ ob_start();
                         </button>
                     </td>
                 </tr>
-                <?php endwhile; ?>
+                <?php 
+                    endwhile; // End while loop for packages
+                } // End if statement for package count check
+                ?>
             </tbody>
         </table>
     </div>

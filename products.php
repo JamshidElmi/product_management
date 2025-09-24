@@ -14,6 +14,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         header("Location: products.php");
         exit();
     }
+    // Server-side validation
+    $errors = [];
+    
+    // Validate required fields based on action
+    if ($_POST['action'] === 'add' || $_POST['action'] === 'edit') {
+        if (empty(trim($_POST['name'] ?? ''))) {
+            $errors[] = 'Product name is required';
+        }
+        if (empty(trim($_POST['size'] ?? ''))) {
+            $errors[] = 'Size is required';
+        }
+        if (!isset($_POST['msrp_price']) || !is_numeric($_POST['msrp_price']) || $_POST['msrp_price'] <= 0) {
+            $errors[] = 'Valid MSRP price is required';
+        }
+        if (!isset($_POST['web_price']) || !is_numeric($_POST['web_price']) || $_POST['web_price'] <= 0) {
+            $errors[] = 'Valid web price is required';
+        }
+    }
+    
+    // If validation fails, set error and redirect
+    if (!empty($errors)) {
+        $_SESSION['error'] = 'Validation failed: ' . implode(', ', $errors);
+        header("Location: products.php");
+        exit();
+    }
+
     switch ($_POST['action']) {
         case 'add':
             // Generate item number based on product name
@@ -277,6 +303,70 @@ function deleteProduct(id) {
     document.getElementById('delete_id').value = id;
     document.getElementById('deleteModal').classList.remove('hidden');
 }
+
+// Enhanced form validation and submission handling
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('Products page: Setting up form validation');
+    
+    // Add form validation and submission handlers
+    const forms = document.querySelectorAll('form[method="POST"]');
+    forms.forEach((form, index) => {
+        console.log('Setting up form handler for form', index);
+        
+        form.addEventListener('submit', function(e) {
+            console.log('Form submission intercepted for validation');
+            
+            // Skip validation for delete forms
+            if (this.querySelector('input[name="action"][value="delete"]')) {
+                console.log('Delete form - skipping validation');
+                return true;
+            }
+            
+            // Validate add/edit forms
+            const action = this.querySelector('input[name="action"]')?.value;
+            if (action === 'add' || action === 'edit') {
+                console.log('Validating', action, 'form');
+                
+                const errors = [];
+                
+                // Validate product name
+                const name = this.querySelector('input[name="name"]')?.value?.trim();
+                if (!name) {
+                    errors.push('Product name is required');
+                }
+                
+                // Validate size
+                const size = this.querySelector('input[name="size"]')?.value?.trim();
+                if (!size) {
+                    errors.push('Size is required');
+                }
+                
+                // Validate MSRP price
+                const msrp = this.querySelector('input[name="msrp_price"]')?.value;
+                if (!msrp || isNaN(parseFloat(msrp)) || parseFloat(msrp) <= 0) {
+                    errors.push('Valid MSRP price is required');
+                }
+                
+                // Validate web price
+                const webPrice = this.querySelector('input[name="web_price"]')?.value;
+                if (!webPrice || isNaN(parseFloat(webPrice)) || parseFloat(webPrice) <= 0) {
+                    errors.push('Valid web price is required');
+                }
+                
+                if (errors.length > 0) {
+                    e.preventDefault();
+                    alert('Please fix the following errors:\n\n• ' + errors.join('\n• '));
+                    console.log('Form validation failed:', errors);
+                    return false;
+                }
+                
+                console.log('Form validation passed, submitting...');
+            }
+            
+            return true;
+        });
+    });
+});
 </script>
 
 <?php

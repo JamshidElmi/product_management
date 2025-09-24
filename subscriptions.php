@@ -14,6 +14,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         header("Location: subscriptions.php");
         exit();
     }
+    // Server-side validation
+    $errors = [];
+    
+    // Validate required fields based on action
+    if ($_POST['action'] === 'add' || $_POST['action'] === 'edit') {
+        if (empty(trim($_POST['name'] ?? ''))) {
+            $errors[] = 'Subscription name is required';
+        }
+        if (!isset($_POST['days']) || !is_numeric($_POST['days']) || $_POST['days'] <= 0) {
+            $errors[] = 'Valid number of days is required';
+        }
+        if (!isset($_POST['discount_percentage']) || !is_numeric($_POST['discount_percentage']) || $_POST['discount_percentage'] < 0 || $_POST['discount_percentage'] > 100) {
+            $errors[] = 'Valid discount percentage (0-100) is required';
+        }
+    }
+    
+    // If validation fails, set error and redirect
+    if (!empty($errors)) {
+        $_SESSION['error'] = 'Validation failed: ' . implode(', ', $errors);
+        header("Location: subscriptions.php");
+        exit();
+    }
+
     switch ($_POST['action']) {
         case 'add':
             $sql = "INSERT INTO subscription_types (name, days, discount_percentage) VALUES (?, ?, ?)";
@@ -224,6 +247,66 @@ function deleteSubscription(id) {
     document.getElementById('delete_id').value = id;
     document.getElementById('deleteModal').classList.remove('hidden');
 }
+
+// Enhanced form validation and submission handling
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('Subscriptions page: Setting up form validation');
+    
+    // Add form validation and submission handlers
+    const forms = document.querySelectorAll('form[method="POST"]');
+    forms.forEach((form, index) => {
+        console.log('Setting up form handler for form', index);
+        
+        form.addEventListener('submit', function(e) {
+            console.log('Form submission intercepted for validation');
+            
+            // Skip validation for delete forms
+            if (this.querySelector('input[name="action"][value="delete"]')) {
+                console.log('Delete form - skipping validation');
+                return true;
+            }
+            
+            // Validate add/edit forms
+            const action = this.querySelector('input[name="action"]')?.value;
+            if (action === 'add' || action === 'edit') {
+                console.log('Validating', action, 'form');
+                
+                const errors = [];
+                
+                // Validate subscription name
+                const name = this.querySelector('input[name="name"]')?.value?.trim();
+                if (!name) {
+                    errors.push('Subscription name is required');
+                }
+                
+                // Validate days
+                const days = this.querySelector('input[name="days"]')?.value;
+                if (!days || isNaN(parseInt(days)) || parseInt(days) <= 0) {
+                    errors.push('Valid number of days is required');
+                }
+                
+                // Validate discount percentage
+                const discount = this.querySelector('input[name="discount_percentage"]')?.value;
+                if (!discount && discount !== '0') {
+                    errors.push('Discount percentage is required');
+                } else if (isNaN(parseFloat(discount)) || parseFloat(discount) < 0 || parseFloat(discount) > 100) {
+                    errors.push('Discount percentage must be between 0 and 100');
+                }
+                
+                if (errors.length > 0) {
+                    e.preventDefault();
+                    alert('Please fix the following errors:\n\n• ' + errors.join('\n• '));
+                    console.log('Form validation failed:', errors);
+                    return false;
+                }
+                
+                console.log('Form validation passed, submitting...');
+            }
+            
+            return true;
+        });
+    });
+});
 </script>
 
 <?php
