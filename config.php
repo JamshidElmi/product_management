@@ -23,8 +23,8 @@ if (session_status() === PHP_SESSION_NONE) {
     // Only require secure cookies when running under HTTPS
     ini_set('session.cookie_secure', $is_https ? 1 : 0);
     ini_set('session.use_strict_mode', 1);
-    // Use 'None' when secure with cross-site contexts, otherwise 'Lax' for local testing
-    ini_set('session.cookie_samesite', $is_https ? 'None' : 'Lax');
+    // Use 'Lax' for better compatibility - 'None' is too restrictive for regular login flows
+    ini_set('session.cookie_samesite', 'Lax');
     ini_set('session.cookie_lifetime', 0);
     ini_set('session.cookie_path', '/');
     // Compute cookie domain dynamically from the request host (strip port if present).
@@ -35,13 +35,10 @@ if (session_status() === PHP_SESSION_NONE) {
             $cookie_domain = '';
             error_log("[SESSION DEBUG] SESSION_COOKIE_FORCE_HOST_ONLY is enabled — using host-only cookie (no Domain attribute)");
         } else {
-            // Leave blank for local to allow browser to accept cookies on localhost.
-            if (!$is_local && !empty($_SERVER['HTTP_HOST'])) {
-                // Remove port if present
-                $hostOnly = preg_replace('/:\d+$/', '', $_SERVER['HTTP_HOST']);
-                // For a host like 'yfsuite.lubricityinnovations.com' use it directly
-                $cookie_domain = $hostOnly;
-            }
+            // For production servers, use host-only cookies for better compatibility
+            // Setting domain explicitly can cause cross-subdomain issues
+            $cookie_domain = '';
+            error_log("[SESSION DEBUG] Using host-only cookie for better server compatibility");
         }
     ini_set('session.cookie_domain', $cookie_domain);
     error_log("[SESSION DEBUG] Computed cookie settings - domain: " . ini_get('session.cookie_domain') . ", secure: " . ($is_https ? '1' : '0') . ", samesite: " . ini_get('session.cookie_samesite'));
@@ -82,8 +79,8 @@ define('SESSION_TIMEOUT', 3600); // 1 hour in seconds
 define('ENABLE_IP_VALIDATION', true);
 define('ENABLE_CSRF_PROTECTION', true);
 
-// Quick testing toggle: when true the session cookie will be host-only (no Domain attribute).
-// Set to true temporarily if browser is not returning the cookie after login to test domain issues.
+// Force host-only cookies for server compatibility
+// This ensures cookies work properly on production servers
 define('SESSION_COOKIE_FORCE_HOST_ONLY', true);
 
 // TEMP: enable verbose error reporting for debugging on local; in production we log to file or syslog
