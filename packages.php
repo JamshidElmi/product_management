@@ -71,6 +71,39 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     
     switch ($_POST['action']) {
         case 'add':
+            // Validate required fields
+            $validation_errors = [];
+            
+            if (empty(trim($_POST['name'] ?? ''))) {
+                $validation_errors[] = "Package name is required";
+            }
+            
+            if (!isset($_POST['discount_percentage']) || $_POST['discount_percentage'] === '' || $_POST['discount_percentage'] < 0) {
+                $validation_errors[] = "Valid discount percentage is required (0 or higher)";
+            }
+            
+            // Check if at least one product is selected
+            $has_products = false;
+            if (isset($_POST['products']) && is_array($_POST['products'])) {
+                foreach ($_POST['products'] as $quantity) {
+                    if ($quantity > 0) {
+                        $has_products = true;
+                        break;
+                    }
+                }
+            }
+            if (!$has_products) {
+                $validation_errors[] = "Please select at least one product with quantity greater than 0";
+            }
+            
+            // If validation fails, show errors and stop
+            if (!empty($validation_errors)) {
+                $_SESSION['error'] = implode("<br>", $validation_errors);
+                error_log("[PACKAGES DEBUG] Validation failed: " . implode(", ", $validation_errors));
+                header("Location: packages.php");
+                exit();
+            }
+            
             // Generate item number based on package name
             $name_prefix = '';
             $name_lower = strtolower($_POST['name']);
@@ -113,7 +146,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt = $conn->prepare($sql);
             $stmt->bind_param("sssdis", $item_number, $_POST['name'], $_POST['description'], $_POST['discount_percentage'], $b2b, $image_filename);
             if ($stmt->execute()) {
-                $_SESSION['success'] = "Package added successfully.";
+                $_SESSION['success'] = "Package '{$_POST['name']}' added successfully! (Item: $item_number)";
                 $package_id = $conn->insert_id;
                 
                     // Log admin action
@@ -148,6 +181,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             break;
 
         case 'edit':
+            // Validate required fields for edit
+            $validation_errors = [];
+            
+            if (empty(trim($_POST['name'] ?? ''))) {
+                $validation_errors[] = "Package name is required";
+            }
+            
+            if (!isset($_POST['discount_percentage']) || $_POST['discount_percentage'] === '' || $_POST['discount_percentage'] < 0) {
+                $validation_errors[] = "Valid discount percentage is required (0 or higher)";
+            }
+            
+            // If validation fails, show errors and stop
+            if (!empty($validation_errors)) {
+                $_SESSION['error'] = implode("<br>", $validation_errors);
+                error_log("[PACKAGES DEBUG] Edit validation failed: " . implode(", ", $validation_errors));
+                header("Location: packages.php");
+                exit();
+            }
+            
             $b2b = isset($_POST['b2b']) && $_POST['b2b'] === '1' ? 1 : 0;
             
             // Get current image
@@ -402,13 +454,13 @@ ob_start();
                 
                 <div class="grid grid-cols-2 gap-4 mb-4">
                     <div>
-                        <label for="name" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Name</label>
-                        <input type="text" name="name" id="name" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary dark:bg-gray-700 dark:border-gray-600 dark:text-white p-1">
+                        <label for="name" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Name <span class="text-red-500">*</span></label>
+                        <input type="text" name="name" id="name" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary dark:bg-gray-700 dark:border-gray-600 dark:text-white p-1" placeholder="Enter package name">
                     </div>
 
                     <div>
-                        <label for="discount_percentage" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Discount Percentage</label>
-                        <input type="number" step="0.01" name="discount_percentage" id="discount_percentage" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary dark:bg-gray-700 dark:border-gray-600 dark:text-white p-1">
+                        <label for="discount_percentage" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Discount Percentage <span class="text-red-500">*</span></label>
+                        <input type="number" step="0.01" name="discount_percentage" id="discount_percentage" required min="0" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary dark:bg-gray-700 dark:border-gray-600 dark:text-white p-1" placeholder="e.g., 15.00">
                     </div>
                 </div>
 
@@ -612,6 +664,81 @@ ob_start();
 </div>
 
 <script>
+// Enhanced form submission handling
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('Packages page loaded - initializing form handlers');
+    
+    // Add form validation and submission handlers
+    const forms = document.querySelectorAll('form[method="POST"]');
+    forms.forEach((form, index) => {
+        console.log('Setting up form handler for form', index);
+        
+        form.addEventListener('submit', function(e) {
+            console.log('Form submission intercepted for validation');
+            
+            // Skip validation for delete forms
+            if (this.querySelector('input[name="action"][value="delete"]')) {
+                console.log('Delete form - skipping validation');
+                return true;
+            }
+            
+            // Validate add/edit forms
+            const action = this.querySelector('input[name="action"]')?.value;
+            if (action === 'add' || action === 'edit') {
+                console.log('Validating', action, 'form');
+                
+                const errors = [];
+                
+                // Check name field
+                const nameField = this.querySelector('input[name="name"]');
+                if (!nameField || !nameField.value.trim()) {
+                    errors.push('Package name is required');
+                }
+                
+                // Check discount percentage
+                const discountField = this.querySelector('input[name="discount_percentage"]');
+                if (!discountField || discountField.value === '' || parseFloat(discountField.value) < 0) {
+                    errors.push('Valid discount percentage is required (0 or higher)');
+                }
+                
+                // Check if at least one product is selected
+                const productInputs = this.querySelectorAll('input[name^="products["]');
+                let hasProducts = false;
+                productInputs.forEach(input => {
+                    if (parseInt(input.value) > 0) {
+                        hasProducts = true;
+                    }
+                });
+                
+                if (!hasProducts) {
+                    errors.push('Please select at least one product with quantity greater than 0');
+                }
+                
+                // Show errors if any
+                if (errors.length > 0) {
+                    e.preventDefault();
+                    alert('Please fix the following errors:\n\n' + errors.join('\n'));
+                    console.error('Form validation failed:', errors);
+                    return false;
+                }
+                
+                console.log('Form validation passed - submitting');
+            }
+        });
+    });
+    
+    // Ensure modal forms are properly handled
+    const addModal = document.getElementById('addPackageModal');
+    const editModal = document.getElementById('editPackageModal');
+    
+    if (addModal) {
+        console.log('Add modal found - ensuring form is properly bound');
+    }
+    if (editModal) {
+        console.log('Edit modal found - ensuring form is properly bound');
+    }
+});
+
 function editPackage(package) {
     document.getElementById('edit_id').value = package.id;
     document.getElementById('edit_name').value = package.name;
