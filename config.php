@@ -57,12 +57,33 @@ define('SESSION_TIMEOUT', 3600); // 1 hour in seconds
 define('ENABLE_IP_VALIDATION', true);
 define('ENABLE_CSRF_PROTECTION', true);
 
-// TEMP: enable verbose error reporting for debugging
-ini_set('display_errors', '1');
-ini_set('display_startup_errors', '1');
-error_reporting(E_ALL);
+// TEMP: enable verbose error reporting for debugging on local; in production we log to file or syslog
+$is_local = $is_local ?? (preg_match('/^(localhost|127\.|::1)/', $_SERVER['HTTP_HOST'] ?? '') ? true : false);
+if ($is_local) {
+    ini_set('display_errors', '1');
+    ini_set('display_startup_errors', '1');
+    error_reporting(E_ALL);
+} else {
+    // In production hide display errors and report errors to log only
+    ini_set('display_errors', '0');
+    ini_set('display_startup_errors', '0');
+    error_reporting(E_ALL & ~E_NOTICE & ~E_STRICT & ~E_DEPRECATED);
+}
+
 ini_set('log_errors', '1');
-ini_set('error_log', __DIR__ . '/logs/php-error.log');
+
+// Prefer app-local logs folder; fall back to syslog when not writable
+$logsDir = __DIR__ . '/logs';
+if (!is_dir($logsDir)) {
+    @mkdir($logsDir, 0755, true);
+}
+$logFile = $logsDir . '/php-error.log';
+if (is_dir($logsDir) && is_writable($logsDir)) {
+    ini_set('error_log', $logFile);
+} else {
+    // If we cannot write to the project logs, fallback to syslog to ensure messages are recorded
+    ini_set('error_log', 'syslog');
+}
 
 // Create database connection
 $conn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);

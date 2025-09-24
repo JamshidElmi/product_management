@@ -115,7 +115,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         // Log successful login
                         logSecurityEvent('successful_login', "User $username logged in successfully", $user['id']);
                         logAdminAction('login', "Successful login from IP: $ip_address");
-                        
+
+                        // Diagnostic logging to help troubleshoot session/cookie issues
+                        error_log("[LOGIN DEBUG] Session after login: " . print_r($_SESSION, true));
+                        // Log headers that will be sent (for debugging only)
+                        if (function_exists('headers_sent')) {
+                            ob_start();
+                            foreach (headers_list() as $h) {
+                                error_log("[LOGIN DEBUG] Pending header: " . $h);
+                            }
+                            ob_end_clean();
+                        }
+
                         error_log("[LOGIN DEBUG] Redirecting to index.php");
                         header("Location: index.php");
                         exit();
