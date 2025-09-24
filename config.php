@@ -96,6 +96,10 @@ if ($writeOk) {
     error_log("[LOGGING DEBUG] Failed to write test file to: $testFile (logs dir maybe not writable)");
 }
 
+// Fallback app-level log (temp): append to app_debug.log so we can always capture debug messages
+$appLog = __DIR__ . '/logs/app_debug.log';
+@file_put_contents($appLog, "[APP LOGGING] " . date('c') . " - Started\n", FILE_APPEND);
+
 // Create database connection
 $conn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
 
