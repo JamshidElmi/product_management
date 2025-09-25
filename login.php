@@ -12,8 +12,8 @@ if (isLoggedIn()) {
 }
 
 $error = '';
-// Enable reCAPTCHA for security
-$show_recaptcha = false; // Will be set to true after failed attempts
+// Enable reCAPTCHA for security - always visible
+$show_recaptcha = true; // Always show reCAPTCHA for better security
 // Preserve posted username for UX
 $posted_username = '';
 
@@ -33,27 +33,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $error = "Too many failed login attempts. Please try again in " . ceil($remaining_time / 60) . " minutes.";
         logSecurityEvent('login_blocked', "Login blocked for IP: $ip_address due to too many failed attempts");
     } else {
-        // Check if reCAPTCHA is required (after 2 failed attempts)
-        $stmt = $conn->prepare("SELECT attempts FROM login_attempts WHERE ip_address = ?");
-        $stmt->bind_param("s", $ip_address);
-        $stmt->execute();
-        $result = $stmt->get_result();
-        
-        if ($result->num_rows > 0) {
-            $row = $result->fetch_assoc();
-            if ($row['attempts'] >= 2) {
-                $show_recaptcha = true;
-            }
-        }
-        
-        // Verify reCAPTCHA if required
-        $recaptcha_valid = true;
-        if ($show_recaptcha) {
-            $recaptcha_valid = verifyRecaptcha($recaptcha_response);
-            if (!$recaptcha_valid) {
-                $error = "Please complete the reCAPTCHA verification.";
-                recordFailedLogin($ip_address, $username);
-            }
+        // Always verify reCAPTCHA for enhanced security
+        $recaptcha_valid = verifyRecaptcha($recaptcha_response);
+        if (!$recaptcha_valid) {
+            $error = "Please complete the reCAPTCHA verification.";
+            recordFailedLogin($ip_address, $username);
         }
         
         if ($recaptcha_valid && !empty($username) && !empty($password)) {
@@ -113,6 +97,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 ob_start();
 ?>
 
+<style>
+/* reCAPTCHA Theme Integration */
+.g-recaptcha {
+    transform: scale(1);
+    transform-origin: center;
+    margin: 0 auto;
+}
+
+/* Smooth transitions for theme changes */
+.g-recaptcha > div {
+    transition: all 0.3s ease;
+}
+
+/* Submit button disabled state */
+button[type="submit"]:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none !important;
+}
+</style>
+
 <div class="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-900 dark:to-gray-800 py-12 px-4 sm:px-6 lg:px-8">
     <div class="w-full max-w-md">
         <div class="bg-white dark:bg-gray-800 shadow-2xl rounded-2xl p-8 sm:p-10">
@@ -167,22 +172,16 @@ ob_start();
                 </div>
             </div>
 
-            <div class="flex items-center justify-between mb-4">
-                <label class="flex items-center text-sm">
-                    <input type="checkbox" name="remember" class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded">
-                    <span class="ml-2 text-gray-700 dark:text-gray-300">Remember me</span>
-                </label>
-                <div class="text-sm">
-                    <a href="#" class="font-medium text-indigo-600 hover:text-indigo-500">Forgot password?</a>
-                </div>
-            </div>
-
-            <!-- reCAPTCHA -->
-            <?php if ($show_recaptcha): ?>
+           
+            <!-- reCAPTCHA - Always visible for security -->
             <div class="flex justify-center mb-4">
-                <div class="g-recaptcha" data-sitekey="<?php echo RECAPTCHA_SITE_KEY; ?>"></div>
+                <div class="g-recaptcha" 
+                     data-sitekey="<?php echo RECAPTCHA_SITE_KEY; ?>" 
+                     data-theme="light" 
+                     data-size="normal"
+                     data-callback="recaptchaCallback"
+                     data-expired-callback="recaptchaExpired"></div>
             </div>
-            <?php endif; ?>
 
             <div>
                 <button type="submit" 
@@ -205,16 +204,109 @@ ob_start();
     </div>
 </div>
 
-<!-- reCAPTCHA Script -->
-<script src="https://www.google.com/recaptcha/api.js" async defer></script>
+<!-- reCAPTCHA Script with theme support -->
+<script src="https://www.google.com/recaptcha/api.js?render=explicit" async defer></script>
 
 <script>
-// Show/hide reCAPTCHA based on failed attempts
+var recaptchaWidget;
+var recaptchaTheme = 'light'; // Default theme
+
+// reCAPTCHA callback function
+function recaptchaCallback(response) {
+    // Enable submit button when reCAPTCHA is completed
+    const submitBtn = document.querySelector('button[type="submit"]');
+    if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+    }
+}
+
+// reCAPTCHA expired callback
+function recaptchaExpired() {
+    // Disable submit button when reCAPTCHA expires
+    const submitBtn = document.querySelector('button[type="submit"]');
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.classList.add('opacity-50', 'cursor-not-allowed');
+    }
+}
+
+// Initialize reCAPTCHA when API loads
+function onRecaptchaLoad() {
+    // Check if dark mode is enabled
+    const isDarkMode = document.documentElement.classList.contains('dark') || 
+                      localStorage.getItem('theme') === 'dark' || 
+                      (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    
+    recaptchaTheme = isDarkMode ? 'dark' : 'light';
+    
+    // Render reCAPTCHA with dynamic theme
+    const recaptchaElement = document.querySelector('.g-recaptcha');
+    if (recaptchaElement) {
+        recaptchaWidget = grecaptcha.render(recaptchaElement, {
+            'sitekey': '<?php echo RECAPTCHA_SITE_KEY; ?>',
+            'theme': recaptchaTheme,
+            'size': 'normal',
+            'callback': recaptchaCallback,
+            'expired-callback': recaptchaExpired
+        });
+    }
+}
+
 document.addEventListener('DOMContentLoaded', function() {
-    <?php if ($show_recaptcha): ?>
-    var rc = document.querySelector('.g-recaptcha');
-    if (rc) rc.style.display = 'block';
-    <?php endif; ?>
+    // Initially disable submit button until reCAPTCHA is completed
+    const submitBtn = document.querySelector('button[type="submit"]');
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.classList.add('opacity-50', 'cursor-not-allowed');
+    }
+    
+    // Initialize reCAPTCHA when ready
+    if (typeof grecaptcha !== 'undefined') {
+        onRecaptchaLoad();
+    } else {
+        // Wait for reCAPTCHA API to load
+        window.addEventListener('load', function() {
+            setTimeout(onRecaptchaLoad, 500);
+        });
+    }
+});
+
+// Handle theme changes
+function updateRecaptchaTheme() {
+    const isDarkMode = document.documentElement.classList.contains('dark');
+    const newTheme = isDarkMode ? 'dark' : 'light';
+    
+    if (newTheme !== recaptchaTheme && typeof grecaptcha !== 'undefined') {
+        recaptchaTheme = newTheme;
+        // Reset and re-render with new theme
+        const recaptchaElement = document.querySelector('.g-recaptcha');
+        if (recaptchaElement && recaptchaWidget !== undefined) {
+            grecaptcha.reset(recaptchaWidget);
+            grecaptcha.render(recaptchaElement, {
+                'sitekey': '<?php echo RECAPTCHA_SITE_KEY; ?>',
+                'theme': recaptchaTheme,
+                'size': 'normal',
+                'callback': recaptchaCallback,
+                'expired-callback': recaptchaExpired
+            });
+        }
+    }
+}
+
+// Watch for theme changes
+const observer = new MutationObserver(function(mutations) {
+    mutations.forEach(function(mutation) {
+        if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
+            updateRecaptchaTheme();
+        }
+    });
+});
+
+// Start observing theme changes
+observer.observe(document.documentElement, {
+    attributes: true,
+    attributeFilter: ['class']
 });
 </script>
 
