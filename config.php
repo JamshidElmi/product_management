@@ -33,23 +33,22 @@ if (session_status() === PHP_SESSION_NONE) {
         if (defined('SESSION_COOKIE_FORCE_HOST_ONLY') && SESSION_COOKIE_FORCE_HOST_ONLY === true) {
             // Host-only: leave cookie domain blank so browser treats cookie as host-only
             $cookie_domain = '';
-            error_log("[SESSION DEBUG] SESSION_COOKIE_FORCE_HOST_ONLY is enabled — using host-only cookie (no Domain attribute)");
+            // Using host-only cookie (no Domain attribute)
         } else {
             // For production servers, use host-only cookies for better compatibility
             // Setting domain explicitly can cause cross-subdomain issues
             $cookie_domain = '';
-            error_log("[SESSION DEBUG] Using host-only cookie for better server compatibility");
+            // Using host-only cookie for better server compatibility
         }
     ini_set('session.cookie_domain', $cookie_domain);
-    error_log("[SESSION DEBUG] Computed cookie settings - domain: " . ini_get('session.cookie_domain') . ", secure: " . ($is_https ? '1' : '0') . ", samesite: " . ini_get('session.cookie_samesite'));
+    // Cookie settings configured
     
     // Set consistent session name across ALL pages
     session_name('PRODUCT_MGMT_SESSION');
     
     session_start();
     
-    error_log("[SESSION DEBUG] Session started. ID: " . session_id() . ", Name: " . session_name());
-    error_log("[SESSION DEBUG] Domain: " . ini_get('session.cookie_domain') . ", Path: " . ini_get('session.cookie_path'));
+    // Session started successfully
     
     // Regenerate session ID periodically (but not on every request)
     if (!isset($_SESSION['last_regeneration'])) {
@@ -183,7 +182,7 @@ if ($conn->connect_error) {
 // Function to check if user is logged in
 function isLoggedIn() {
     error_log("[AUTH DEBUG] isLoggedIn() called. Session ID: " . session_id());
-    error_log("[AUTH DEBUG] Session contents: " . print_r($_SESSION, true));
+    // Session exists
     
     if (!isset($_SESSION['user_id'])) {
         error_log("[AUTH DEBUG] No user_id in session");
@@ -250,7 +249,7 @@ function verifyRecaptcha($response) {
         'remoteip' => $_SERVER['REMOTE_ADDR']
     );
     
-    error_log("[RECAPTCHA DEBUG] Sending data to Google: " . print_r($data, true));
+    // Sending verification request
     
     $verify = curl_init();
     curl_setopt($verify, CURLOPT_URL, "https://www.google.com/recaptcha/api/siteverify");
@@ -270,7 +269,7 @@ function verifyRecaptcha($response) {
     curl_close($verify);
     
     $result = json_decode($response, true);
-    error_log("[RECAPTCHA DEBUG] Decoded result: " . print_r($result, true));
+    // Verification result received
     
     $success = isset($result['success']) && $result['success'] === true;
     error_log("[RECAPTCHA DEBUG] Returning: " . ($success ? 'true' : 'false'));

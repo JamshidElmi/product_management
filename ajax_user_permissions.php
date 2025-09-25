@@ -29,13 +29,74 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         }
         
         ?>
+        <style>
+        /* Toggle Switch Styles */
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 44px;
+            height: 24px;
+        }
+
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #cbd5e0;
+            -webkit-transition: .4s;
+            transition: .4s;
+            border-radius: 24px;
+        }
+
+        .toggle-slider:before {
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            -webkit-transition: .4s;
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+        .toggle-switch input:checked + .toggle-slider {
+            background-color: #3b82f6;
+        }
+
+        .toggle-switch input:checked + .toggle-slider:before {
+            -webkit-transform: translateX(20px);
+            -ms-transform: translateX(20px);
+            transform: translateX(20px);
+        }
+
+        /* Dark mode styles */
+        .dark .toggle-slider {
+            background-color: #4a5568;
+        }
+
+        .dark .toggle-switch input:checked + .toggle-slider {
+            background-color: #3b82f6;
+        }
+        </style>
+        
         <form method="post" action="users.php">
             <input type="hidden" name="action" value="update_permissions">
             <input type="hidden" name="user_id" value="<?php echo $user_id; ?>">
             
             <div class="mb-4">
                 <h4 class="text-md font-medium text-gray-900 dark:text-white">Permissions for: <?php echo htmlspecialchars($username); ?></h4>
-                <p class="text-sm text-gray-500 dark:text-gray-400">Select the permissions this user should have for each module.</p>
+                <p class="text-sm text-gray-500 dark:text-gray-400">Toggle the permissions this user should have for each module.</p>
             </div>
             
             <div class="overflow-x-auto">
@@ -60,28 +121,43 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                                 <?php echo htmlspecialchars($module['module_name']); ?>
                             </td>
                             <td class="px-4 py-4 whitespace-nowrap text-center">
-                                <input type="checkbox" name="modules[<?php echo $module_key; ?>][view]" value="1" 
-                                       class="permission-checkbox view-checkbox" data-module="<?php echo $module_key; ?>"
-                                       <?php echo ($current && $current['can_view']) ? 'checked' : ''; ?>>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" name="modules[<?php echo $module_key; ?>][view]" value="1" 
+                                           class="permission-checkbox view-checkbox" data-module="<?php echo $module_key; ?>"
+                                           <?php echo ($current && $current['can_view']) ? 'checked' : ''; ?>>
+                                    <span class="toggle-slider"></span>
+                                </label>
                             </td>
                             <td class="px-4 py-4 whitespace-nowrap text-center">
-                                <input type="checkbox" name="modules[<?php echo $module_key; ?>][create]" value="1" 
-                                       class="permission-checkbox create-checkbox" data-module="<?php echo $module_key; ?>"
-                                       <?php echo ($current && $current['can_create']) ? 'checked' : ''; ?>>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" name="modules[<?php echo $module_key; ?>][create]" value="1" 
+                                           class="permission-checkbox create-checkbox" data-module="<?php echo $module_key; ?>"
+                                           <?php echo ($current && $current['can_create']) ? 'checked' : ''; ?>>
+                                    <span class="toggle-slider"></span>
+                                </label>
                             </td>
                             <td class="px-4 py-4 whitespace-nowrap text-center">
-                                <input type="checkbox" name="modules[<?php echo $module_key; ?>][edit]" value="1" 
-                                       class="permission-checkbox edit-checkbox" data-module="<?php echo $module_key; ?>"
-                                       <?php echo ($current && $current['can_edit']) ? 'checked' : ''; ?>>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" name="modules[<?php echo $module_key; ?>][edit]" value="1" 
+                                           class="permission-checkbox edit-checkbox" data-module="<?php echo $module_key; ?>"
+                                           <?php echo ($current && $current['can_edit']) ? 'checked' : ''; ?>>
+                                    <span class="toggle-slider"></span>
+                                </label>
                             </td>
                             <td class="px-4 py-4 whitespace-nowrap text-center">
-                                <input type="checkbox" name="modules[<?php echo $module_key; ?>][delete]" value="1" 
-                                       class="permission-checkbox delete-checkbox" data-module="<?php echo $module_key; ?>"
-                                       <?php echo ($current && $current['can_delete']) ? 'checked' : ''; ?>>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" name="modules[<?php echo $module_key; ?>][delete]" value="1" 
+                                           class="permission-checkbox delete-checkbox" data-module="<?php echo $module_key; ?>"
+                                           <?php echo ($current && $current['can_delete']) ? 'checked' : ''; ?>>
+                                    <span class="toggle-slider"></span>
+                                </label>
                             </td>
                             <td class="px-4 py-4 whitespace-nowrap text-center">
-                                <input type="checkbox" class="all-checkbox" data-module="<?php echo $module_key; ?>"
-                                       onchange="toggleAll('<?php echo $module_key; ?>', this.checked)">
+                                <label class="toggle-switch">
+                                    <input type="checkbox" class="all-checkbox" data-module="<?php echo $module_key; ?>"
+                                           onchange="toggleAll('<?php echo $module_key; ?>', this.checked)">
+                                    <span class="toggle-slider"></span>
+                                </label>
                             </td>
                         </tr>
                         <?php endforeach; ?>

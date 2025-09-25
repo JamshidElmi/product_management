@@ -164,7 +164,7 @@ ob_start();
 
 <!-- Add Product Modal -->
 <div id="addProductModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full">
-    <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white dark:bg-gray-800">
+    <div class="relative top-20 mx-auto p-5 w-96 shadow-lg rounded-md bg-white dark:bg-gray-800">
         <div class="mt-3">
             <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">Add New Product</h3>
             <form method="POST" class="space-y-4">
@@ -210,7 +210,7 @@ ob_start();
 
 <!-- Edit Product Modal -->
 <div id="editProductModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full">
-    <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white dark:bg-gray-800">
+    <div class="relative top-20 mx-auto p-5 w-96 shadow-lg rounded-md bg-white dark:bg-gray-800">
         <div class="mt-3">
             <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">Edit Product</h3>
             <form method="POST" class="space-y-4">
@@ -257,7 +257,7 @@ ob_start();
 
 <!-- Delete Confirmation Modal -->
 <div id="deleteModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full">
-    <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white dark:bg-gray-800">
+    <div class="relative top-20 mx-auto p-5 w-96 shadow-lg rounded-md bg-white dark:bg-gray-800">
         <div class="mt-3">
             <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">Delete Product</h3>
             <p class="text-sm text-gray-500 dark:text-gray-400">Are you sure you want to delete this product?</p>
@@ -297,26 +297,26 @@ function deleteProduct(id) {
 
 // Enhanced form validation and submission handling
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('Products page: Setting up form validation');
+    // Setting up form validation
     
     // Add form validation and submission handlers
     const forms = document.querySelectorAll('form[method="POST"]');
     forms.forEach((form, index) => {
-        console.log('Setting up form handler for form', index);
+        // Setting up form handler
         
         form.addEventListener('submit', function(e) {
-            console.log('Form submission intercepted for validation');
+            // Form submission intercepted for validation
             
             // Skip validation for delete forms
             if (this.querySelector('input[name="action"][value="delete"]')) {
-                console.log('Delete form - skipping validation');
+                // Delete form - skipping validation
                 return true;
             }
             
             // Validate add/edit forms
             const action = this.querySelector('input[name="action"]')?.value;
             if (action === 'add' || action === 'edit') {
-                console.log('Validating', action, 'form');
+                // Validating form
                 
                 const errors = [];
                 
@@ -347,11 +347,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (errors.length > 0) {
                     e.preventDefault();
                     alert('Please fix the following errors:\n\n• ' + errors.join('\n• '));
-                    console.log('Form validation failed:', errors);
+                    // Form validation failed
                     return false;
                 }
                 
-                console.log('Form validation passed, submitting...');
+                // Form validation passed
             }
             
             return true;

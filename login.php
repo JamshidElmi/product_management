@@ -43,7 +43,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($recaptcha_valid && !empty($username) && !empty($password)) {
             // Use the new authentication function
             if (authenticateUser($username, $password)) {
-                error_log("[LOGIN DEBUG] Authentication successful");
                 // Successful login
                 clearLoginAttempts($ip_address);
                 
@@ -52,43 +51,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $_SESSION['ip_address'] = $ip_address;
                 $_SESSION['login_time'] = time();
                 
-                // Additional diagnostic info: log cookies and session cookie params
-                error_log("[LOGIN DEBUG] \\$_COOKIE: " . print_r($_COOKIE, true));
-                error_log("[LOGIN DEBUG] session_id(): " . session_id());
-                error_log("[LOGIN DEBUG] session_get_cookie_params(): " . print_r(session_get_cookie_params(), true));
-
-                // Log server environment info for debugging
-                error_log("[LOGIN DEBUG] Server IP: " . ($_SERVER['SERVER_ADDR'] ?? 'unknown'));
-                error_log("[LOGIN DEBUG] Remote IP: " . $ip_address);
-                error_log("[LOGIN DEBUG] Session ID: " . session_id());
-                error_log("[LOGIN DEBUG] Session variables set: " . print_r($_SESSION, true));
-                
                 // Log successful login
                 logSecurityEvent('successful_login', "User $username logged in successfully", $user['id']);
                 logAdminAction('login', "Successful login from IP: $ip_address");
 
-                // Diagnostic logging to help troubleshoot session/cookie issues
-                error_log("[LOGIN DEBUG] Session after login: " . print_r($_SESSION, true));
-                // Log headers that will be sent (for debugging only)
-                if (function_exists('headers_sent')) {
-                    ob_start();
-                    foreach (headers_list() as $h) {
-                        error_log("[LOGIN DEBUG] Pending header: " . $h);
-                    }
-                    ob_end_clean();
-                }
-
-                error_log("[LOGIN DEBUG] Redirecting to index.php");
                 header("Location: index.php");
                 exit();
             } else {
-                error_log("[LOGIN DEBUG] Authentication failed");
                 $error = "Invalid username or password";
                 recordFailedLogin($ip_address, $username);
-                error_log("[LOGIN DEBUG] Login failed, recording failed attempt");
             }
         } elseif (empty($username) || empty($password)) {
-            error_log("[LOGIN DEBUG] Username or password is empty");
             $error = "Please enter both username and password";
         }
     }
@@ -220,7 +193,6 @@ var maxRecaptchaAttempts = 10;
 
 // reCAPTCHA callback function
 function recaptchaCallback(response) {
-    console.log('reCAPTCHA completed successfully');
     // Enable submit button when reCAPTCHA is completed
     const submitBtn = document.querySelector('button[type="submit"]');
     if (submitBtn) {
@@ -231,7 +203,6 @@ function recaptchaCallback(response) {
 
 // reCAPTCHA expired callback
 function recaptchaExpired() {
-    console.log('reCAPTCHA expired');
     // Disable submit button when reCAPTCHA expires
     const submitBtn = document.querySelector('button[type="submit"]');
     if (submitBtn) {
@@ -242,7 +213,6 @@ function recaptchaExpired() {
 
 // Global callback function called when reCAPTCHA API loads
 function onRecaptchaAPILoad() {
-    console.log('reCAPTCHA API loaded');
     recaptchaLoaded = true;
     initializeRecaptcha();
 }
@@ -250,18 +220,17 @@ function onRecaptchaAPILoad() {
 // Initialize reCAPTCHA with retry mechanism
 function initializeRecaptcha() {
     if (recaptchaAttempts >= maxRecaptchaAttempts) {
-        console.error('Max reCAPTCHA initialization attempts reached');
         showRecaptchaError();
         return;
     }
 
     recaptchaAttempts++;
-    console.log('reCAPTCHA initialization attempt:', recaptchaAttempts);
+
 
     try {
         // Check if grecaptcha is available
         if (typeof grecaptcha === 'undefined' || !grecaptcha.render) {
-            console.log('grecaptcha not ready, retrying...');
+
             setTimeout(initializeRecaptcha, 500);
             return;
         }
@@ -292,16 +261,14 @@ function initializeRecaptcha() {
             'callback': recaptchaCallback,
             'expired-callback': recaptchaExpired,
             'error-callback': function() {
-                console.error('reCAPTCHA error occurred');
                 showRecaptchaError();
             }
         });
         
-        console.log('reCAPTCHA initialized successfully');
+
         hideRecaptchaError();
         
     } catch (error) {
-        console.error('Error initializing reCAPTCHA:', error);
         setTimeout(initializeRecaptcha, 1000);
     }
 }
@@ -340,7 +307,6 @@ function retryRecaptcha() {
 }
 
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('DOM loaded, initializing reCAPTCHA setup');
     
     // Initially disable submit button until reCAPTCHA is completed
     const submitBtn = document.querySelector('button[type="submit"]');
@@ -357,7 +323,7 @@ document.addEventListener('DOMContentLoaded', function() {
         // Wait for API to load, but also set a timeout as fallback
         setTimeout(function() {
             if (!recaptchaLoaded) {
-                console.log('reCAPTCHA API load timeout, attempting to initialize anyway');
+
                 initializeRecaptcha();
             }
         }, 3000);
@@ -370,7 +336,7 @@ function updateRecaptchaTheme() {
     const newTheme = isDarkMode ? 'dark' : 'light';
     
     if (newTheme !== recaptchaTheme && typeof grecaptcha !== 'undefined' && recaptchaWidget !== undefined) {
-        console.log('Theme changed to:', newTheme);
+
         recaptchaTheme = newTheme;
         
         try {
@@ -387,7 +353,7 @@ function updateRecaptchaTheme() {
                     'callback': recaptchaCallback,
                     'expired-callback': recaptchaExpired,
                     'error-callback': function() {
-                        console.error('reCAPTCHA error on theme change');
+                        // Handle reCAPTCHA error silently
                     }
                 });
                 
@@ -399,7 +365,7 @@ function updateRecaptchaTheme() {
                 }
             }
         } catch (error) {
-            console.error('Error updating reCAPTCHA theme:', error);
+            // Handle theme update error silently
         }
     }
 }

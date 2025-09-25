@@ -322,10 +322,10 @@ ob_start();
             </thead>
             <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                 <?php 
-                // Debug: Show package count
+                // Show package count
                 $total_packages = $packages ? $packages->num_rows : 0;
                 if ($total_packages == 0) {
-                    // Show debug info for empty results
+                    // Show info for empty results
                     echo '<tr><td colspan="10" class="px-6 py-4 text-center text-red-500">';
                     echo 'No packages found. ';
                     $count_check = $conn->query("SELECT COUNT(*) as count FROM packages");
@@ -424,7 +424,7 @@ ob_start();
 
 <!-- Add Package Modal -->
 <div id="addPackageModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full">
-    <div class="relative top-20 mx-auto p-5 border w-[800px] shadow-lg rounded-md bg-white dark:bg-gray-800">
+    <div class="relative top-20 mx-auto p-5 w-[800px] shadow-lg rounded-md bg-white dark:bg-gray-800">
         <div class="mt-3">
             <div class="flex justify-between items-center mb-4">
                 <h3 class="text-lg font-medium text-gray-900 dark:text-white">Add New Package</h3>
@@ -529,7 +529,7 @@ ob_start();
 
 <!-- Edit Package Modal -->
 <div id="editPackageModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full">
-    <div class="relative top-20 mx-auto p-5 border w-[800px] shadow-lg rounded-md bg-white dark:bg-gray-800">
+    <div class="relative top-20 mx-auto p-5 w-[800px] shadow-lg rounded-md bg-white dark:bg-gray-800">
         <div class="mt-3">
             <div class="flex justify-between items-center mb-4">
                 <h3 class="text-lg font-medium text-gray-900 dark:text-white">Edit Package</h3>
@@ -634,7 +634,7 @@ ob_start();
 
 <!-- Delete Confirmation Modal -->
 <div id="deleteModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full">
-    <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white dark:bg-gray-800">
+    <div class="relative top-20 mx-auto p-5 w-96 shadow-lg rounded-md bg-white dark:bg-gray-800">
         <div class="mt-3">
             <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">Delete Package</h3>
             <p class="text-sm text-gray-500 dark:text-gray-400">Are you sure you want to delete this package?</p>
@@ -662,18 +662,18 @@ document.addEventListener('DOMContentLoaded', function() {
     forms.forEach((form, index) => {
         
         form.addEventListener('submit', function(e) {
-            console.log('Form submission intercepted for validation');
+            // Form submission intercepted for validation
             
             // Skip validation for delete forms
             if (this.querySelector('input[name="action"][value="delete"]')) {
-                console.log('Delete form - skipping validation');
+                // Delete form - skipping validation
                 return true;
             }
             
             // Validate add/edit forms
             const action = this.querySelector('input[name="action"]')?.value;
             if (action === 'add' || action === 'edit') {
-                console.log('Validating', action, 'form');
+                // Validating form
                 
                 const errors = [];
                 
@@ -706,11 +706,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (errors.length > 0) {
                     e.preventDefault();
                     alert('Please fix the following errors:\n\n' + errors.join('\n'));
-                    console.error('Form validation failed:', errors);
+                    // Form validation failed
                     return false;
                 }
                 
-                console.log('Form validation passed - submitting');
+                // Form validation passed
             }
         });
     });
@@ -720,10 +720,10 @@ document.addEventListener('DOMContentLoaded', function() {
     const editModal = document.getElementById('editPackageModal');
     
     if (addModal) {
-        console.log('Add modal found - ensuring form is properly bound');
+        // Add modal found
     }
     if (editModal) {
-        console.log('Edit modal found - ensuring form is properly bound');
+        // Edit modal found
     }
 });
 

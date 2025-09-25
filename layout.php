@@ -155,7 +155,7 @@ require_once 'config.php';
         <!-- Main content -->
         <main class="min-h-screen">
             <div class="py-6">
-                <div class="mx-auto <?php echo in_array(basename($_SERVER['PHP_SELF']), ['price_sheet.php', 'packages.php', 'products.php', 'subscriptions.php', 'orders.php', 'security_monitor.php', 'index.php']) ? '' : 'max-w-7xl'; ?> px-4 sm:px-6 md:px-8">
+                <div class="mx-auto <?php echo in_array(basename($_SERVER['PHP_SELF']), ['price_sheet.php', 'packages.php', 'products.php', 'subscriptions.php', 'orders.php', 'security_monitor.php', 'index.php', 'users.php']) ? '' : 'max-w-7xl'; ?> px-4 sm:px-6 md:px-8">
                     <?php if (isset($_SESSION['success'])): ?>
                         <div class="mb-4 rounded-md bg-green-50 p-4 dark:bg-green-900">
                             <div class="flex">

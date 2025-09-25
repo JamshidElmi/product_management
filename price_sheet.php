@@ -329,7 +329,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             $first_product = explode(' - ', $product_array[0]);
                             $product_name = $first_product[0];
                             echo htmlspecialchars($product_name . ' - ' . $row['package_name']); 
-                            // Debug info: uncomment next line to see total items
+                            // Total items info
                             // echo '<br><small>Items: ' . $row['total_items_in_package'] . ' | Item#: ' . $row['package_item_number'] . '</small>';
                             ?></b>
                         </td>
@@ -532,7 +532,7 @@ $(document).ready(function() {
                 `;
                 $cell.html(priceHtml);
             } catch (error) {
-                console.error('Error processing subscription <?php echo $sub_type['id']; ?>:', error);
+                // Error processing subscription
             }
         <?php endwhile; ?>
     }

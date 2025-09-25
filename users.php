@@ -241,7 +241,7 @@ ob_start();
 
 <!-- Create User Modal -->
 <div id="createUserModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden z-50">
-    <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white dark:bg-gray-800">
+    <div class="relative top-20 mx-auto p-5 w-96 shadow-lg rounded-md bg-white dark:bg-gray-800">
         <div class="mt-3">
             <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">Create New User</h3>
             <form method="post">
@@ -294,7 +294,7 @@ ob_start();
 
 <!-- Permissions Modal -->
 <div id="permissionsModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden z-50">
-    <div class="relative top-10 mx-auto p-5 border w-4/5 max-w-4xl shadow-lg rounded-md bg-white dark:bg-gray-800">
+    <div class="relative top-10 mx-auto p-5 w-4/5 max-w-4xl shadow-lg rounded-md bg-white dark:bg-gray-800">
         <div class="mt-3">
             <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">Manage User Permissions</h3>
             <div id="permissionsContent">
@@ -306,7 +306,7 @@ ob_start();
 
 <!-- Change Password Modal -->
 <div id="changePasswordModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden z-50">
-    <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white dark:bg-gray-800">
+    <div class="relative top-20 mx-auto p-5 w-96 shadow-lg rounded-md bg-white dark:bg-gray-800">
         <div class="mt-3">
             <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">Change Password</h3>
             <div id="changePasswordAlert" class="hidden mb-4"></div>
@@ -406,7 +406,7 @@ function loadUserPermissions(userId, username) {
         document.getElementById('permissionsContent').innerHTML = html;
     })
     .catch(error => {
-        console.error('Error loading permissions:', error);
+        // Handle error loading permissions
         document.getElementById('permissionsContent').innerHTML = '<p class="text-red-500">Error loading permissions.</p>';
     });
 }
@@ -482,7 +482,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             })
             .catch(error => {
-                console.error('Error:', error);
+                // Handle error
                 showChangePasswordAlert('An error occurred. Please try again.', 'error');
             })
             .finally(() => {

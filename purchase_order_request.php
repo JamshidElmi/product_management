@@ -561,8 +561,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $verifyOrderStmt->close();
                     $conn->rollback();
                     
-                    // Log this event for debugging
-                    error_log("Attempted to edit non-existent order ID: {$updating_order_id}");
+                    // Log this event
+                    // Attempted to edit non-existent order
                     
                     // Redirect back to orders page with error message
                     $_SESSION['error'] = "Order ID {$updating_order_id} does not exist or has been deleted. Please check the orders list.";
@@ -647,9 +647,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             
             if (!$checkOrderRes || $checkOrderRes->num_rows === 0) {
                 $checkOrderStmt->close();
-                // Provide detailed error message for debugging
-                $debugInfo = $updating_order_id ? "updating order ID $updating_order_id" : "new order";
-                throw new Exception("Order ID {$order_id} not found after database operations ($debugInfo). This may indicate a database constraint issue or transaction problem.");
+                // Provide detailed error message
+                $operation_type = $updating_order_id ? "updating order ID $updating_order_id" : "new order";
+                throw new Exception("Order ID {$order_id} not found after database operations ($operation_type). This may indicate a database constraint issue or transaction problem.");
             }
             $checkOrderStmt->close();
 
@@ -1204,7 +1204,7 @@ if(document.getElementById('line-items-body').children.length===0){ addRow(); }
 <?php if ($editing && !empty($edit_items)): ?>
 // Pre-populate existing order items for editing
 $(document).ready(function() {
-    console.log('Starting edit mode with <?php echo count($edit_items); ?> items');
+    // Starting edit mode
     
     // Clear any existing rows first
     $('#line-items-body').empty();
@@ -1213,23 +1213,23 @@ $(document).ready(function() {
     setTimeout(function() {
         <?php foreach ($edit_items as $index => $item): ?>
         // Add row for item <?php echo $index; ?>
-        console.log('Adding row <?php echo $index; ?> for product ID <?php echo $item['product_id']; ?>');
+        // Adding row for product
         setTimeout(function() {
             addRow();
             const row = $('#line-items-body tr').last();
             const select = row.find('.product-select');
             
-            console.log('Row added, select element found:', select.length > 0);
+            // Row added
             
             // Wait for Select2 to be fully initialized
             setTimeout(function() {
-                console.log('Setting product value: <?php echo $item['product_id']; ?>');
+                // Setting product value
                 // Set the selected option
                 select.val('<?php echo $item['product_id']; ?>').trigger('change.select2');
                 
                 // Wait for change event to process, then update values
                 setTimeout(function() {
-                    console.log('Updating values for row <?php echo $index; ?>');
+                    // Updating values for row
                     // Set quantity
                     row.find('input[name="quantity[]"]').val(<?php echo $item['quantity']; ?>);
                     
@@ -1243,12 +1243,12 @@ $(document).ready(function() {
                     // Update line total
                     updateLineTotal(row[0]);
                     
-                    console.log('Row <?php echo $index; ?> populated successfully');
+                    // Row populated successfully
                     
                     // Recalculate totals (only on last item)
                     <?php if ($index === count($edit_items) - 1): ?>
                     setTimeout(function() {
-                        console.log('Recalculating total for all items');
+                        // Recalculating total for all items
                         recalcTotal();
                     }, 200);
                     <?php endif; ?>
