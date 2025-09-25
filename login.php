@@ -194,25 +194,33 @@ button[type="submit"]:disabled {
                     Sign in
                 </button>
             </div>
-            <div>
+            <div class="flex flex-row gap-3">
                 <a href="price_sheet.php" 
-                        class="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
-                    View Price Sheet
+                    class="group flex-1 flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-orange-600 hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
+                    Price Sheet
+                </a>
+                <a href="price_sheet.php" 
+                    class="group flex-1 flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500">
+                    Purchase Order
                 </a>
             </div>
         </form>
     </div>
 </div>
 
-<!-- reCAPTCHA Script with theme support -->
-<script src="https://www.google.com/recaptcha/api.js?render=explicit" async defer></script>
+<!-- reCAPTCHA Script with improved loading -->
+<script src="https://www.google.com/recaptcha/api.js?onload=onRecaptchaAPILoad&render=explicit" async defer></script>
 
 <script>
 var recaptchaWidget;
 var recaptchaTheme = 'light'; // Default theme
+var recaptchaLoaded = false;
+var recaptchaAttempts = 0;
+var maxRecaptchaAttempts = 10;
 
 // reCAPTCHA callback function
 function recaptchaCallback(response) {
+    console.log('reCAPTCHA completed successfully');
     // Enable submit button when reCAPTCHA is completed
     const submitBtn = document.querySelector('button[type="submit"]');
     if (submitBtn) {
@@ -223,6 +231,7 @@ function recaptchaCallback(response) {
 
 // reCAPTCHA expired callback
 function recaptchaExpired() {
+    console.log('reCAPTCHA expired');
     // Disable submit button when reCAPTCHA expires
     const submitBtn = document.querySelector('button[type="submit"]');
     if (submitBtn) {
@@ -231,29 +240,108 @@ function recaptchaExpired() {
     }
 }
 
-// Initialize reCAPTCHA when API loads
-function onRecaptchaLoad() {
-    // Check if dark mode is enabled
-    const isDarkMode = document.documentElement.classList.contains('dark') || 
-                      localStorage.getItem('theme') === 'dark' || 
-                      (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme: dark)').matches);
-    
-    recaptchaTheme = isDarkMode ? 'dark' : 'light';
-    
-    // Render reCAPTCHA with dynamic theme
-    const recaptchaElement = document.querySelector('.g-recaptcha');
-    if (recaptchaElement) {
+// Global callback function called when reCAPTCHA API loads
+function onRecaptchaAPILoad() {
+    console.log('reCAPTCHA API loaded');
+    recaptchaLoaded = true;
+    initializeRecaptcha();
+}
+
+// Initialize reCAPTCHA with retry mechanism
+function initializeRecaptcha() {
+    if (recaptchaAttempts >= maxRecaptchaAttempts) {
+        console.error('Max reCAPTCHA initialization attempts reached');
+        showRecaptchaError();
+        return;
+    }
+
+    recaptchaAttempts++;
+    console.log('reCAPTCHA initialization attempt:', recaptchaAttempts);
+
+    try {
+        // Check if grecaptcha is available
+        if (typeof grecaptcha === 'undefined' || !grecaptcha.render) {
+            console.log('grecaptcha not ready, retrying...');
+            setTimeout(initializeRecaptcha, 500);
+            return;
+        }
+
+        // Check if dark mode is enabled
+        const isDarkMode = document.documentElement.classList.contains('dark') || 
+                          localStorage.getItem('theme') === 'dark' || 
+                          (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme: dark)').matches);
+        
+        recaptchaTheme = isDarkMode ? 'dark' : 'light';
+        
+        // Find reCAPTCHA element
+        const recaptchaElement = document.querySelector('.g-recaptcha');
+        if (!recaptchaElement) {
+            console.error('reCAPTCHA element not found');
+            setTimeout(initializeRecaptcha, 500);
+            return;
+        }
+
+        // Clear any existing content
+        recaptchaElement.innerHTML = '';
+        
+        // Render reCAPTCHA
         recaptchaWidget = grecaptcha.render(recaptchaElement, {
             'sitekey': '<?php echo RECAPTCHA_SITE_KEY; ?>',
             'theme': recaptchaTheme,
             'size': 'normal',
             'callback': recaptchaCallback,
-            'expired-callback': recaptchaExpired
+            'expired-callback': recaptchaExpired,
+            'error-callback': function() {
+                console.error('reCAPTCHA error occurred');
+                showRecaptchaError();
+            }
         });
+        
+        console.log('reCAPTCHA initialized successfully');
+        hideRecaptchaError();
+        
+    } catch (error) {
+        console.error('Error initializing reCAPTCHA:', error);
+        setTimeout(initializeRecaptcha, 1000);
     }
 }
 
+// Show reCAPTCHA error message
+function showRecaptchaError() {
+    const recaptchaElement = document.querySelector('.g-recaptcha');
+    if (recaptchaElement) {
+        recaptchaElement.innerHTML = `
+            <div class="text-center p-4 border-2 border-dashed border-red-300 rounded-lg bg-red-50 dark:bg-red-900/20">
+                <p class="text-sm text-red-600 dark:text-red-400 mb-2">reCAPTCHA failed to load</p>
+                <button type="button" onclick="retryRecaptcha()" class="text-xs bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700">
+                    Retry
+                </button>
+            </div>
+        `;
+    }
+    
+    // Enable submit button as fallback
+    const submitBtn = document.querySelector('button[type="submit"]');
+    if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+    }
+}
+
+// Hide reCAPTCHA error message
+function hideRecaptchaError() {
+    // Error message will be replaced by actual reCAPTCHA
+}
+
+// Retry reCAPTCHA initialization
+function retryRecaptcha() {
+    recaptchaAttempts = 0;
+    initializeRecaptcha();
+}
+
 document.addEventListener('DOMContentLoaded', function() {
+    console.log('DOM loaded, initializing reCAPTCHA setup');
+    
     // Initially disable submit button until reCAPTCHA is completed
     const submitBtn = document.querySelector('button[type="submit"]');
     if (submitBtn) {
@@ -261,14 +349,18 @@ document.addEventListener('DOMContentLoaded', function() {
         submitBtn.classList.add('opacity-50', 'cursor-not-allowed');
     }
     
-    // Initialize reCAPTCHA when ready
-    if (typeof grecaptcha !== 'undefined') {
-        onRecaptchaLoad();
+    // Start initialization process
+    if (recaptchaLoaded) {
+        // API already loaded
+        initializeRecaptcha();
     } else {
-        // Wait for reCAPTCHA API to load
-        window.addEventListener('load', function() {
-            setTimeout(onRecaptchaLoad, 500);
-        });
+        // Wait for API to load, but also set a timeout as fallback
+        setTimeout(function() {
+            if (!recaptchaLoaded) {
+                console.log('reCAPTCHA API load timeout, attempting to initialize anyway');
+                initializeRecaptcha();
+            }
+        }, 3000);
     }
 });
 
@@ -277,19 +369,37 @@ function updateRecaptchaTheme() {
     const isDarkMode = document.documentElement.classList.contains('dark');
     const newTheme = isDarkMode ? 'dark' : 'light';
     
-    if (newTheme !== recaptchaTheme && typeof grecaptcha !== 'undefined') {
+    if (newTheme !== recaptchaTheme && typeof grecaptcha !== 'undefined' && recaptchaWidget !== undefined) {
+        console.log('Theme changed to:', newTheme);
         recaptchaTheme = newTheme;
-        // Reset and re-render with new theme
-        const recaptchaElement = document.querySelector('.g-recaptcha');
-        if (recaptchaElement && recaptchaWidget !== undefined) {
-            grecaptcha.reset(recaptchaWidget);
-            grecaptcha.render(recaptchaElement, {
-                'sitekey': '<?php echo RECAPTCHA_SITE_KEY; ?>',
-                'theme': recaptchaTheme,
-                'size': 'normal',
-                'callback': recaptchaCallback,
-                'expired-callback': recaptchaExpired
-            });
+        
+        try {
+            // Reset and re-render with new theme
+            const recaptchaElement = document.querySelector('.g-recaptcha');
+            if (recaptchaElement) {
+                grecaptcha.reset(recaptchaWidget);
+                recaptchaElement.innerHTML = '';
+                
+                recaptchaWidget = grecaptcha.render(recaptchaElement, {
+                    'sitekey': '<?php echo RECAPTCHA_SITE_KEY; ?>',
+                    'theme': recaptchaTheme,
+                    'size': 'normal',
+                    'callback': recaptchaCallback,
+                    'expired-callback': recaptchaExpired,
+                    'error-callback': function() {
+                        console.error('reCAPTCHA error on theme change');
+                    }
+                });
+                
+                // Reset submit button state
+                const submitBtn = document.querySelector('button[type="submit"]');
+                if (submitBtn) {
+                    submitBtn.disabled = true;
+                    submitBtn.classList.add('opacity-50', 'cursor-not-allowed');
+                }
+            }
+        } catch (error) {
+            console.error('Error updating reCAPTCHA theme:', error);
         }
     }
 }
@@ -303,10 +413,12 @@ const observer = new MutationObserver(function(mutations) {
     });
 });
 
-// Start observing theme changes
-observer.observe(document.documentElement, {
-    attributes: true,
-    attributeFilter: ['class']
+// Start observing theme changes when DOM is ready
+document.addEventListener('DOMContentLoaded', function() {
+    observer.observe(document.documentElement, {
+        attributes: true,
+        attributeFilter: ['class']
+    });
 });
 </script>
 
