@@ -199,7 +199,7 @@ button[type="submit"]:disabled {
                     class="group flex-1 flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-orange-600 hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
                     Price Sheet
                 </a>
-                <a href="price_sheet.php" 
+                <a href="purchase_order_request.php" 
                     class="group flex-1 flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500">
                     Purchase Order
                 </a>
