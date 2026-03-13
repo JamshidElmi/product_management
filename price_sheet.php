@@ -27,7 +27,7 @@ $query = "SELECT
     pk.image as package_image,
     pk.b2b as package_b2b,
     p.name as product_name,
-    SUM(p.web_price * pi.quantity) as total_package_price,
+    SUM(p.web_price * CASE WHEN pk.b2b = 0 THEN pi.quantity ELSE 1 END) as total_package_price,
     SUM(pi.quantity) as total_items_in_package,
     GROUP_CONCAT(CONCAT(p.name, ' - ', p.flavor, ' - ', p.size, ' - $', p.web_price) SEPARATOR '<br><br>') as product_details
 FROM packages pk
