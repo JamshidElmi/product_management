@@ -689,7 +689,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 // Fetch dynamic product & package combinations for dropdown
 // We need product id, package id (if any), and label "product name - package name - flavor (if) - size"
 // Only include B2B packages
-$query = "SELECT p.id AS product_id, pk.id AS package_id, p.name, pk.name AS package_name, p.flavor, p.size, p.web_price, pk.image AS package_image, pi.quantity AS package_quantity
+$query = "SELECT p.id AS product_id,
+                 pk.id AS package_id,
+                 p.name,
+                 pk.name AS package_name,
+                 p.flavor,
+                 p.size,
+                 p.web_price,
+                 pk.image AS package_image,
+                 pi.quantity AS package_quantity,
+                 pk.discount_percentage AS package_discount
           FROM products p
           INNER JOIN package_items pi ON pi.product_id = p.id
           INNER JOIN packages pk ON pk.id = pi.package_id AND pk.b2b = 1
@@ -714,12 +723,17 @@ while ($row = $result->fetch_assoc()) {
     }
     
     $label = implode(' ', $labelParts); // now excludes base product name and removes trailing dashes
+
+    $package_discount = (float)$row['package_discount'];
+    $web_price = (float)$row['web_price'];
+    $unit_price_after_discount = $web_price * (1 - ($package_discount / 100));
+
     $options[] = [
         'product_id' => $row['product_id'],
         'package_id' => $row['package_id'],
         'product_name' => $row['name'],
         'label' => $label,
-        'price' => $row['web_price'],
+        'price' => round($unit_price_after_discount, 2),
         'package_image' => $row['package_image'],
         'package_quantity' => $row['package_quantity'],
         'size' => $row['size'] // Add size to the options
@@ -1157,7 +1171,29 @@ function recalcTotal(){
   document.getElementById('grand-total').textContent = formatMoney(total);
 }
 $('#add-row').on('click', addRow);
-$(document).on('input', 'input[name="quantity[]"]', recalcTotal);
+function normalizeQuantityInput(inputEl) {
+    const qtyInput = $(inputEl);
+    let qty = parseInt(qtyInput.val(), 10);
+    const packageQty = parseInt(qtyInput.attr('data-package-qty'), 10) || 1;
+    const minQty = packageQty;
+
+    if (isNaN(qty) || qty < minQty) {
+        qty = minQty;
+    }
+
+    // Always keep quantity aligned to package size multiples.
+    if (qty % packageQty !== 0) {
+        qty = Math.ceil(qty / packageQty) * packageQty;
+    }
+
+    qtyInput.val(qty);
+    return qty;
+}
+
+$(document).on('input', 'input[name="quantity[]"]', function() {
+    normalizeQuantityInput(this);
+    recalcTotal();
+});
 $(document).on('click', '.remove-row', function(){ $(this).closest('tr').remove(); recalcTotal(); });
 
 // Handle quantity button clicks
@@ -1182,21 +1218,8 @@ $(document).on('click', '.qty-btn', function(e) {
 
 // Handle manual quantity input validation
 $(document).on('blur', 'input[name="quantity[]"]', function() {
-  const qtyInput = $(this);
-  let qty = parseInt(qtyInput.val()) || 1;
-  const packageQty = parseInt(qtyInput.attr('data-package-qty')) || 1;
-  const minQty = packageQty;
-  
-  // Ensure quantity is a multiple of package quantity
-  if (qty % packageQty !== 0) {
-    qty = Math.round(qty / packageQty) * packageQty;
-  }
-  
-  // Ensure minimum quantity
-  if (qty < minQty) qty = minQty;
-  
-  qtyInput.val(qty);
-  qtyInput.trigger('input');
+    normalizeQuantityInput(this);
+    recalcTotal();
 });
 
 if(document.getElementById('line-items-body').children.length===0){ addRow(); }
